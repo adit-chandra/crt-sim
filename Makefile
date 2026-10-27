@@ -1,4 +1,4 @@
-.PHONY: app run install snapshot clean
+.PHONY: app run demo install snapshot clean
 
 APP := build/CRT Player.app
 
@@ -7,6 +7,9 @@ app:
 
 run: app
 	open "$(APP)"
+
+demo: app
+	open "$(APP)" --args --demo
 
 install: app
 	rm -rf "/Applications/CRT Player.app"

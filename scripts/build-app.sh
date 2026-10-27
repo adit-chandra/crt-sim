@@ -13,6 +13,7 @@ rm -rf "$APP"
 mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources"
 cp "$BIN_DIR/CRTPlayer" "$APP/Contents/MacOS/CRTPlayer"
 cp Sources/CRTPlayer/Info.plist "$APP/Contents/Info.plist"
+cp Resources/Demo.mp4 "$APP/Contents/Resources/Demo.mp4"
 # Compile the Icon Composer icon into Assets.car (Liquid Glass) plus an .icns fallback.
 xcrun actool Resources/AppIcon.icon \
     --compile "$APP/Contents/Resources" \
