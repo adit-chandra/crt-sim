@@ -21,6 +21,8 @@ let usage = """
       --transition <name> render mid-transition: on, off, static
       --at <seconds>      time into the transition (default 0.1)
       --glass <image>     preview glass-pane mode over a blurred, frosted backdrop
+      --transparency <n>  glass-pane transparency, 0...1 (default 0.4)
+      --glass-brightness <n>  glass lightness, 0 smoked ... 1 frosted (default 0.45)
     """
 
 func fail(_ message: String) -> Never {
@@ -45,8 +47,11 @@ guard positional.count == 2 else { fail(usage) }
 let inputURL = URL(fileURLWithPath: positional[0])
 let outputURL = URL(fileURLWithPath: positional[1])
 
-/// Approximates the window server's glass: the backdrop blurred and frosted,
-/// with the (premultiplied) picture composited on top.
+/// Approximates the window server's smoked glass: the backdrop blurred and
+/// darkened, with the premultiplied picture composited over it in linear light.
+/// Matches the black tint the app puts on its glass pane.
+let glassTint = 0.75 * (1 - (Double(options["glass-brightness"] ?? "0.45") ?? 0.45))
+
 func composite(_ picture: CGImage, overGlass backdropPath: String) throws -> CGImage {
     let size = CGSize(width: picture.width, height: picture.height)
     guard let source = CGImageSourceCreateWithURL(URL(fileURLWithPath: backdropPath) as CFURL, nil),
@@ -59,18 +64,28 @@ func composite(_ picture: CGImage, overGlass backdropPath: String) throws -> CGI
         .clampedToExtent()
         .applyingGaussianBlur(sigma: 30)
         .cropped(to: CGRect(origin: .zero, size: size))
+    let linear = CGColorSpace(name: CGColorSpace.extendedLinearSRGB)!
+    let floatInfo: CGBitmapInfo = [
+        CGBitmapInfo(rawValue: CGImageAlphaInfo.premultipliedLast.rawValue),
+        .floatComponents, .byteOrder16Little,
+    ]
     guard let glass = CIContext().createCGImage(blurred, from: blurred.extent),
           let context = CGContext(
+              data: nil, width: picture.width, height: picture.height, bitsPerComponent: 16,
+              bytesPerRow: 0, space: linear, bitmapInfo: floatInfo.rawValue),
+          let output = CGContext(
               data: nil, width: picture.width, height: picture.height, bitsPerComponent: 8,
               bytesPerRow: 0, space: CGColorSpace(name: CGColorSpace.sRGB)!,
               bitmapInfo: CGImageAlphaInfo.premultipliedFirst.rawValue
                   | CGBitmapInfo.byteOrder32Little.rawValue) else { fail("could not composite") }
     let bounds = CGRect(origin: .zero, size: size)
     context.draw(glass, in: bounds)
-    context.setFillColor(CGColor(gray: 1, alpha: 0.18))
+    context.setFillColor(CGColor(colorSpace: linear, components: [0, 0, 0, glassTint])!)
     context.fill(bounds)
     context.draw(picture, in: bounds)
-    guard let result = context.makeImage() else { fail("could not composite") }
+    guard let composited = context.makeImage() else { fail("could not composite") }
+    output.draw(composited, in: bounds)
+    guard let result = output.makeImage() else { fail("could not composite") }
     return result
 }
 
@@ -96,7 +111,9 @@ do {
     let texture = try MTKTextureLoader(device: device).newTexture(
         cgImage: frame, options: [.SRGB: false])
 
-    let renderer = try CRTRenderer(device: device)
+    // Glass previews composite in linear light like the window server, so render float.
+    let renderer = try CRTRenderer(
+        device: device, outputPixelFormat: options["glass"] != nil ? .rgba16Float : .bgra8Unorm)
     if let id = options["preset"] {
         guard let preset = CRTPreset.named(id) else { fail("unknown preset \(id)\n\(usage)") }
         renderer.settings = preset.settings
@@ -110,6 +127,7 @@ do {
     }
     renderer.isEnabled = options["off"] == nil
     renderer.glassMode = options["glass"] != nil
+    renderer.glassTransparency = Double(options["transparency"] ?? "0.4") ?? 0.4
     renderer.displayAspect = Double(frame.width) / Double(frame.height)
     renderer.setSource(texture: texture)
 

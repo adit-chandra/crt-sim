@@ -12,7 +12,10 @@ final class PlayerWindowController: NSWindowController, NSWindowDelegate, NSMenu
     private let chrome = ChromeState()
     private let renderer: CRTRenderer
     private let contentView = PlayerContentView()
-    /// Becomes the window's root view in glass-pane mode, hosting `contentView`.
+    /// In glass-pane mode the window's root view: smoked glass behind `contentView`.
+    /// The glass is a sibling rather than a container so the picture itself never
+    /// gets the glass treatment.
+    private let glassRoot = NSView()
     private let glassView = NSGlassEffectView()
     private let metalView: CRTMetalView
     private let titleShade = TitleShadeView()
@@ -136,6 +139,7 @@ final class PlayerWindowController: NSWindowController, NSWindowDelegate, NSMenu
             renderer.isEnabled = store.isEnabled
             renderer.rotation = model.rotation
             renderer.headroom = (metalView.window?.screen?.maximumExtendedDynamicRangeColorComponentValue).map(Double.init) ?? 1
+            renderer.glassTransparency = store.glassTransparency
             if let size = model.videoSize, size.width > 0, size.height > 0 {
                 renderer.displayAspect = size.width / size.height
             }
@@ -176,6 +180,11 @@ final class PlayerWindowController: NSWindowController, NSWindowDelegate, NSMenu
                 }
             },
             Task { [weak self, store] in
+                for await _ in Observations({ store.glassBrightness }) {
+                    self?.updateGlassTint()
+                }
+            },
+            Task { [weak self, store] in
                 var lastSeen = store.announcement?.id ?? 0
                 for await announcement in Observations({ store.announcement }) {
                     guard let self else { return }
@@ -201,17 +210,28 @@ final class PlayerWindowController: NSWindowController, NSWindowDelegate, NSMenu
         window.backgroundColor = enabled ? .clear : .black
 
         let frame = window.frame
-        if enabled, window.contentView !== glassView {
+        if enabled, window.contentView !== glassRoot {
             glassView.style = .regular
             glassView.cornerRadius = 16
-            window.contentView = glassView
-            glassView.contentView = contentView
+            updateGlassTint()
+            window.contentView = glassRoot
+            for view in [glassView, contentView] as [NSView] {
+                view.frame = glassRoot.bounds
+                view.autoresizingMask = [.width, .height]
+                glassRoot.addSubview(view)
+            }
         } else if !enabled, window.contentView !== contentView {
-            glassView.contentView = nil
+            glassView.removeFromSuperview()
+            contentView.removeFromSuperview()
             window.contentView = contentView
         }
         window.setFrame(frame, display: true)
         window.invalidateShadow()
+    }
+
+    /// Darkens the glass toward smoked as brightness goes down.
+    private func updateGlassTint() {
+        glassView.tintColor = NSColor.black.withAlphaComponent(0.75 * (1 - store.glassBrightness))
     }
 
     // MARK: - Showing the window

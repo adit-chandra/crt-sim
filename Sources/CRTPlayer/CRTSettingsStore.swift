@@ -28,6 +28,14 @@ final class CRTSettingsStore {
     var glassPane: Bool {
         didSet { UserDefaults.standard.set(glassPane, forKey: Keys.glassPane) }
     }
+    /// How see-through the picture is in glass-pane mode, 0...1.
+    var glassTransparency: Double {
+        didSet { UserDefaults.standard.set(glassTransparency, forKey: Keys.glassTransparency) }
+    }
+    /// How light the glass is in glass-pane mode: 0 dark smoked, 1 bright frosted.
+    var glassBrightness: Double {
+        didSet { UserDefaults.standard.set(glassBrightness, forKey: Keys.glassBrightness) }
+    }
 
     /// The preset matching the current settings exactly, if any.
     var preset: CRTPreset? {
@@ -38,6 +46,8 @@ final class CRTSettingsStore {
         static let settings = "crtSettings"
         static let enabled = "crtEnabled"
         static let glassPane = "glassPane"
+        static let glassTransparency = "glassTransparency"
+        static let glassBrightness = "glassBrightness"
     }
 
     private init() {
@@ -46,6 +56,8 @@ final class CRTSettingsStore {
             .flatMap { try? JSONDecoder().decode(CRTSettings.self, from: $0) } ?? .default
         isEnabled = defaults.object(forKey: Keys.enabled) as? Bool ?? true
         glassPane = defaults.bool(forKey: Keys.glassPane)
+        glassTransparency = defaults.object(forKey: Keys.glassTransparency) as? Double ?? 0.4
+        glassBrightness = defaults.object(forKey: Keys.glassBrightness) as? Double ?? 0.45
     }
 
     func apply(_ preset: CRTPreset) {

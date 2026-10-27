@@ -10,9 +10,9 @@
 //
 // Output is either gamma-encoded SDR (8-bit targets) or linear extended-range
 // light where 1.0 is SDR white and values up to `headroom` use the display's EDR.
-// In glass mode the output is premultiplied light over a transparent window:
-// bright picture is opaque, while dark areas, scanline gaps and everything
-// outside the tube let the glass behind show through.
+// In glass mode the output is premultiplied over a transparent window: bright
+// picture is opaque, while dark areas, scanline gaps and everything outside the
+// tube let the glass behind show through. The tube's glow is added as light.
 //
 // `Uniforms` must stay in sync with `CRTUniforms` in CRTRenderer.swift.
 
@@ -57,6 +57,7 @@ struct Uniforms {
     float powerBoost;
     float staticAmount;
     float glassMode;
+    float glassTransparency;
 };
 
 struct VOut {
@@ -261,12 +262,14 @@ static float4 finish(float3 linearColor, float grain, float alpha, constant Unif
     return float4(saturate(encoded), alpha);
 }
 
-// How much of the glass a pixel hides: a faint smoked tint where the picture is
-// black, fully opaque from mid-tones up. Judged on perceptual (gamma-encoded)
-// brightness so only genuinely dark areas turn to glass.
-static float glassCoverage(float luminance) {
+// How much of the glass a pixel hides, judged on perceptual (gamma-encoded)
+// brightness. `transparency` 0 keeps the picture solid; as it rises, blacks
+// clear first, then mid-tones; highlights stay nearly solid throughout.
+static float glassCoverage(float luminance, float transparency) {
     float perceived = pow(max(luminance, 0.0), 1.0 / 2.2);
-    return mix(0.1, 1.0, smoothstep(0.03, 0.55, perceived));
+    float t = saturate(transparency);
+    float opaqueAt = mix(0.05, 1.1, t);
+    return mix(1.0 - t, 1.0, smoothstep(0.0, opaqueAt, perceived));
 }
 
 fragment float4 crt_fragment(VOut in [[stage_in]],
@@ -383,8 +386,11 @@ fragment float4 crt_fragment(VOut in [[stage_in]],
     // Grain in display space so it reads evenly across tones; RF adds tuner snow.
     float grainAmount = u.noise * 0.07 + (u.signalType > 2.5 ? 0.04 : 0.0);
     float n = hash12(pix + fract(u.time * 7.13) * 3971.0) - 0.5;
-    float alpha = u.glassMode > 0.5 ? glassCoverage(beamLuminance) : 1.0;
-    return finish(mix(bezel, color, inside), n * grainAmount * inside * raster * alpha,
+    float alpha = u.glassMode > 0.5 ? glassCoverage(beamLuminance, u.glassTransparency) : 1.0;
+    // Premultiplied: the picture covers `alpha` of what's behind it, and the
+    // bezel glow is pure added light.
+    float3 light = color * alpha * inside + bezel * (1.0 - inside);
+    return finish(light, n * grainAmount * inside * raster * alpha,
                   mix(bezelAlpha, alpha, inside), u);
 }
 
@@ -396,7 +402,9 @@ fragment float4 passthrough_fragment(VOut in [[stage_in]],
         return float4(0.0, 0.0, 0.0, u.glassMode > 0.5 ? 0.0 : 1.0);
     }
     float3 c = src.sample(linearClamp, rotateUV(uv, u.rotation)).rgb;
-    return float4(u.outputLinear > 0.5 ? srgbToLinear(c) : c, 1.0);
+    float3 light = srgbToLinear(c);
+    float alpha = u.glassMode > 0.5 ? glassCoverage(dot(light, kLuma709), u.glassTransparency) : 1.0;
+    return float4((u.outputLinear > 0.5 ? light : c) * alpha, alpha);
 }
 """#
 }

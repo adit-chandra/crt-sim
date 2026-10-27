@@ -29,6 +29,11 @@ struct CRTSettingsView: View {
                 .controlSize(.small)
                 .font(.system(size: 12))
                 .help("Show the picture as light on a pane of glass, so the desktop shows through dark areas")
+            if store.glassPane {
+                percentRow("Transparency", value: $store.glassTransparency)
+                percentRow("Brightness", value: $store.glassBrightness)
+                    .help("How light the glass is, from dark smoked glass to bright frosted glass")
+            }
 
             VStack(alignment: .leading, spacing: 14) {
                 section("Tube") {
@@ -106,6 +111,16 @@ struct CRTSettingsView: View {
         }
         .font(.system(size: 12))
         .controlSize(.small)
+    }
+
+    private func percentRow(_ title: String, value: Binding<Double>) -> some View {
+        row(title) {
+            Slider(value: value, in: 0...1)
+            Text("\(Int((value.wrappedValue * 100).rounded()))%")
+                .monospacedDigit()
+                .foregroundStyle(.secondary)
+                .frame(width: 36, alignment: .trailing)
+        }
     }
 
     private func slider(

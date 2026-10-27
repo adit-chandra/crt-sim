@@ -46,6 +46,7 @@ private struct CRTUniforms {
     var powerBoost: Float = 1
     var staticAmount: Float = 0
     var glassMode: Float = 0
+    var glassTransparency: Float = 0.4
 }
 
 /// Keeps a CoreVideo-backed texture alive until the GPU is done with it.
@@ -105,6 +106,8 @@ public final class CRTRenderer: NSObject, MTKViewDelegate {
     /// Renders the picture as light over a transparent background, for drawing
     /// on top of a glass pane. Needs a non-opaque layer.
     public var glassMode = false
+    /// How see-through the picture is in glass mode: 0 solid, 1 the most.
+    public var glassTransparency: Double = 0.4
     /// Called at the start of every frame an `MTKView` asks for.
     public var willDraw: (@MainActor (CRTRenderer) -> Void)?
 
@@ -267,9 +270,11 @@ public final class CRTRenderer: NSObject, MTKViewDelegate {
 
     /// Renders one frame synchronously at media time `time`. `contentsScale` sizes
     /// the phosphor mask as it would appear on a display with that backing scale.
+    /// Float renderers produce a linear extended-range image.
     public func renderImage(width: Int, height: Int, contentsScale: Double = 2,
                             time: CFTimeInterval = CACurrentMediaTime()) -> CGImage? {
-        guard outputFormat == .bgra8Unorm else { return nil }
+        let isFloat = outputFormat == .rgba16Float
+        guard outputFormat == .bgra8Unorm || isFloat else { return nil }
         let desc = MTLTextureDescriptor.texture2DDescriptor(
             pixelFormat: outputFormat, width: width, height: height, mipmapped: false)
         desc.usage = [.renderTarget, .shaderRead]
@@ -284,18 +289,24 @@ public final class CRTRenderer: NSObject, MTKViewDelegate {
         commandBuffer.commit()
         commandBuffer.waitUntilCompleted()
 
-        let bytesPerRow = width * 4
+        let bytesPerRow = width * (isFloat ? 8 : 4)
         var bytes = [UInt8](repeating: 0, count: bytesPerRow * height)
         target.getBytes(&bytes, bytesPerRow: bytesPerRow,
                         from: MTLRegionMake2D(0, 0, width, height), mipmapLevel: 0)
         guard let provider = CGDataProvider(data: Data(bytes) as CFData) else { return nil }
+        let bitmapInfo: CGBitmapInfo = isFloat
+            ? [CGBitmapInfo(rawValue: (glassMode ? CGImageAlphaInfo.premultipliedLast
+                                                 : CGImageAlphaInfo.noneSkipLast).rawValue),
+               .floatComponents, .byteOrder16Little]
+            : [CGBitmapInfo(rawValue: (glassMode ? CGImageAlphaInfo.premultipliedFirst
+                                                 : CGImageAlphaInfo.noneSkipFirst).rawValue),
+               .byteOrder32Little]
         return CGImage(
-            width: width, height: height, bitsPerComponent: 8, bitsPerPixel: 32,
-            bytesPerRow: bytesPerRow, space: CGColorSpace(name: CGColorSpace.sRGB)!,
-            bitmapInfo: CGBitmapInfo(rawValue: (glassMode ? CGImageAlphaInfo.premultipliedFirst
-                                                     : CGImageAlphaInfo.noneSkipFirst).rawValue
-                | CGBitmapInfo.byteOrder32Little.rawValue),
-            provider: provider, decode: nil, shouldInterpolate: false, intent: .defaultIntent)
+            width: width, height: height, bitsPerComponent: isFloat ? 16 : 8,
+            bitsPerPixel: isFloat ? 64 : 32, bytesPerRow: bytesPerRow,
+            space: CGColorSpace(name: isFloat ? CGColorSpace.extendedLinearSRGB : CGColorSpace.sRGB)!,
+            bitmapInfo: bitmapInfo, provider: provider, decode: nil,
+            shouldInterpolate: false, intent: .defaultIntent)
     }
 
     // MARK: - Encoding
@@ -331,6 +342,7 @@ public final class CRTRenderer: NSObject, MTKViewDelegate {
         u.outputLinear = outputIsLinear ? 1 : 0
         u.headroom = outputIsLinear ? Float(max(headroom, 1)) : 1
         u.glassMode = glassMode ? 1 : 0
+        u.glassTransparency = Float(glassTransparency)
 
         let sourceTexture = source ?? blackTexture
         if let sourceOwner {
