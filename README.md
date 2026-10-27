@@ -13,6 +13,9 @@ frame through a simulated cathode-ray tube.
   grain. If there's no picture yet, it shows analog snow.
 - HDR output: on displays with extended dynamic range, lit phosphors can go
   brighter than SDR white, so the mask and scanlines don't dim the picture.
+- Glass Pane (⌥⌘G): the window turns into a Liquid Glass pane and the picture
+  becomes light on it, so the desktop shows through the dark parts of the video,
+  the scanline gaps, and the corners outside the tube.
 - Picture-tube transitions: windows power on and off like a CRT, and switching
   presets cuts through a burst of static.
 - Presets: Classic (the default), Studio Monitor, Living Room TV, Arcade Cabinet,
@@ -42,6 +45,7 @@ Finder's Open With menu. Any format AVFoundation plays will work.
 | ⌘E | Toggle the CRT effect |
 | ⌘[ / ⌘] | Previous / next preset |
 | ⌘I | CRT settings |
+| ⌥⌘G | Glass Pane |
 | ⌥⌘L | Loop |
 | Double-click, ⌃⌘F | Full screen |
 
@@ -53,6 +57,7 @@ Finder's Open With menu. Any format AVFoundation plays will work.
   useful for tuning:
   `swift run crt-snapshot movie.mp4 out.png --time 5 --preset arcade`. It can also
   override the signal (`--signal composite`) or freeze a transition mid-way
-  (`--transition off --at 0.3`).
+  (`--transition off --at 0.3`), or preview Glass Pane over a blurred backdrop
+  (`--glass wallpaper.png`).
 - `Resources/AppIcon.icon`: the app icon, an Icon Composer document. Open it in
   Icon Composer to edit it; `make app` compiles it with `actool`.

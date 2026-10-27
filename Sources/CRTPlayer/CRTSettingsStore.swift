@@ -24,6 +24,10 @@ final class CRTSettingsStore {
         }
     }
     private(set) var announcement: Announcement?
+    /// Show the picture as light on a translucent glass window instead of a black one.
+    var glassPane: Bool {
+        didSet { UserDefaults.standard.set(glassPane, forKey: Keys.glassPane) }
+    }
 
     /// The preset matching the current settings exactly, if any.
     var preset: CRTPreset? {
@@ -33,6 +37,7 @@ final class CRTSettingsStore {
     private enum Keys {
         static let settings = "crtSettings"
         static let enabled = "crtEnabled"
+        static let glassPane = "glassPane"
     }
 
     private init() {
@@ -40,6 +45,7 @@ final class CRTSettingsStore {
         settings = defaults.data(forKey: Keys.settings)
             .flatMap { try? JSONDecoder().decode(CRTSettings.self, from: $0) } ?? .default
         isEnabled = defaults.object(forKey: Keys.enabled) as? Bool ?? true
+        glassPane = defaults.bool(forKey: Keys.glassPane)
     }
 
     func apply(_ preset: CRTPreset) {

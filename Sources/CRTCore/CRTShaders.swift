@@ -10,6 +10,9 @@
 //
 // Output is either gamma-encoded SDR (8-bit targets) or linear extended-range
 // light where 1.0 is SDR white and values up to `headroom` use the display's EDR.
+// In glass mode the output is premultiplied light over a transparent window:
+// bright picture is opaque, while dark areas, scanline gaps and everything
+// outside the tube let the glass behind show through.
 //
 // `Uniforms` must stay in sync with `CRTUniforms` in CRTRenderer.swift.
 
@@ -53,6 +56,7 @@ struct Uniforms {
     float powerV;
     float powerBoost;
     float staticAmount;
+    float glassMode;
 };
 
 struct VOut {
@@ -247,13 +251,22 @@ static float3 phosphorMask(float2 pix, float type, float strength, float scale) 
     return m;
 }
 
-// Adds display-space grain, then converts to the output encoding.
-static float4 finish(float3 linearColor, float grain, constant Uniforms &u) {
+// Adds display-space grain, then converts to the output encoding. `alpha` is
+// coverage for glass mode; the color is already premultiplied light.
+static float4 finish(float3 linearColor, float grain, float alpha, constant Uniforms &u) {
     float3 encoded = pow(max(linearColor, 0.0), 1.0 / 2.2) + grain;
     if (u.outputLinear > 0.5) {
-        return float4(pow(max(encoded, 0.0), 2.2), 1.0);
+        return float4(pow(max(encoded, 0.0), 2.2), alpha);
     }
-    return float4(saturate(encoded), 1.0);
+    return float4(saturate(encoded), alpha);
+}
+
+// How much of the glass a pixel hides: a faint smoked tint where the picture is
+// black, fully opaque from mid-tones up. Judged on perceptual (gamma-encoded)
+// brightness so only genuinely dark areas turn to glass.
+static float glassCoverage(float luminance) {
+    float perceived = pow(max(luminance, 0.0), 1.0 / 2.2);
+    return mix(0.1, 1.0, smoothstep(0.03, 0.55, perceived));
 }
 
 fragment float4 crt_fragment(VOut in [[stage_in]],
@@ -291,8 +304,10 @@ fragment float4 crt_fragment(VOut in [[stage_in]],
     float3 glow = bloomTex.sample(linearClamp, saturate(tuv)).rgb * raster;
     float lit = saturate(u.powerV * 4.0) * min(u.powerBoost, 1.0);
     float3 bezel = glow * u.glow * 0.12 * exp(-max(d, 0.0) * 25.0) * lit;
+    // Outside the tube: black, or in glass mode only the glow, added onto the glass.
+    float bezelAlpha = u.glassMode > 0.5 ? 0.0 : 1.0;
     if (inside <= 0.0) {
-        return finish(bezel, 0.0, u);
+        return finish(bezel, 0.0, bezelAlpha, u);
     }
 
     // Misconvergence: red and blue beams land slightly off, more so at the edges.
@@ -322,6 +337,9 @@ fragment float4 crt_fragment(VOut in [[stage_in]],
                          sig.sample(linearClamp, float2(xb, tuv.y)).b);
     float resolvable = 1.0 - smoothstep(0.45, 0.85, fw);
     float3 color = mix(flat, beam, u.scanlines * resolvable);
+    // Glass coverage follows the beam, not the mask, so phosphor stripes don't
+    // turn into stripes of differently see-through glass.
+    float beamLuminance = dot(color, kLuma709);
 
     // Phosphor mask in physical pixels. Compensating for the light it blocks
     // keeps average brightness; with EDR headroom the lit phosphors can exceed
@@ -337,29 +355,37 @@ fragment float4 crt_fragment(VOut in [[stage_in]],
 
     // Halation inside the glass.
     float glowLum = dot(glow, kLuma709);
-    color += glow * u.glow * (0.25 + 0.75 * saturate(glowLum * 2.0)) * 0.6;
+    float3 halation = glow * u.glow * (0.25 + 0.75 * saturate(glowLum * 2.0)) * 0.6;
+    color += halation;
+    beamLuminance += dot(halation, kLuma709);
 
     // Vignette and a soft shadow where the bezel meets the glass.
     float2 vv = saturate(tuv * (1.0 - tuv));
-    color *= pow(saturate(vv.x * vv.y * 16.0), u.vignette * 0.35);
-    color *= 0.7 + 0.3 * smoothstep(0.0, 0.05, -d);
+    float shade = pow(saturate(vv.x * vv.y * 16.0), u.vignette * 0.35)
+                * (0.7 + 0.3 * smoothstep(0.0, 0.05, -d));
+    color *= shade;
+    beamLuminance *= shade;
 
     // Slow rolling hum bar.
     float bar = 0.5 + 0.5 * sin((tuv.y - u.time * 0.11) * 6.2831853 * 1.5);
     color *= 1.0 - u.noise * 0.12 * bar;
 
     color *= raster * u.powerBoost;
+    beamLuminance *= raster * u.powerBoost;
 
     // Channel-change static.
     float snow = hash12(floor(pix / 2.0) + floor(u.time * 60.0) * float2(7.0, 13.0));
     color = mix(color, float3(snow * snow * 0.5), u.staticAmount);
+    beamLuminance = mix(beamLuminance, snow * snow * 0.5, u.staticAmount);
 
     color = shoulder(max(color * u.brightness, 0.0), min(white, 8.0));
 
     // Grain in display space so it reads evenly across tones; RF adds tuner snow.
     float grainAmount = u.noise * 0.07 + (u.signalType > 2.5 ? 0.04 : 0.0);
     float n = hash12(pix + fract(u.time * 7.13) * 3971.0) - 0.5;
-    return finish(mix(bezel, color, inside), n * grainAmount * inside * raster, u);
+    float alpha = u.glassMode > 0.5 ? glassCoverage(beamLuminance) : 1.0;
+    return finish(mix(bezel, color, inside), n * grainAmount * inside * raster * alpha,
+                  mix(bezelAlpha, alpha, inside), u);
 }
 
 fragment float4 passthrough_fragment(VOut in [[stage_in]],
@@ -367,7 +393,7 @@ fragment float4 passthrough_fragment(VOut in [[stage_in]],
                                      constant Uniforms &u [[buffer(0)]]) {
     float2 uv = (in.position.xy - float2(u.tubeX, u.tubeY)) / float2(u.tubeW, u.tubeH);
     if (u.hasSignal < 0.5 || any(uv < 0.0) || any(uv > 1.0)) {
-        return float4(0.0, 0.0, 0.0, 1.0);
+        return float4(0.0, 0.0, 0.0, u.glassMode > 0.5 ? 0.0 : 1.0);
     }
     float3 c = src.sample(linearClamp, rotateUV(uv, u.rotation)).rgb;
     return float4(u.outputLinear > 0.5 ? srgbToLinear(c) : c, 1.0);

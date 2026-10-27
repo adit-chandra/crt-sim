@@ -2,6 +2,7 @@
 // to a PNG. Handy for tuning shaders without running the app.
 
 import AVFoundation
+import CoreImage
 import CRTCore
 import Foundation
 import ImageIO
@@ -19,6 +20,7 @@ let usage = """
       --off               bypass the CRT effect
       --transition <name> render mid-transition: on, off, static
       --at <seconds>      time into the transition (default 0.1)
+      --glass <image>     preview glass-pane mode over a blurred, frosted backdrop
     """
 
 func fail(_ message: String) -> Never {
@@ -42,6 +44,35 @@ while let arg = arguments.popFirst() {
 guard positional.count == 2 else { fail(usage) }
 let inputURL = URL(fileURLWithPath: positional[0])
 let outputURL = URL(fileURLWithPath: positional[1])
+
+/// Approximates the window server's glass: the backdrop blurred and frosted,
+/// with the (premultiplied) picture composited on top.
+func composite(_ picture: CGImage, overGlass backdropPath: String) throws -> CGImage {
+    let size = CGSize(width: picture.width, height: picture.height)
+    guard let source = CGImageSourceCreateWithURL(URL(fileURLWithPath: backdropPath) as CFURL, nil),
+          let backdrop = CGImageSourceCreateImageAtIndex(source, 0, nil) else {
+        fail("could not read \(backdropPath)")
+    }
+    let input = CIImage(cgImage: backdrop)
+    let fill = max(size.width / input.extent.width, size.height / input.extent.height)
+    let blurred = input.transformed(by: CGAffineTransform(scaleX: fill, y: fill))
+        .clampedToExtent()
+        .applyingGaussianBlur(sigma: 30)
+        .cropped(to: CGRect(origin: .zero, size: size))
+    guard let glass = CIContext().createCGImage(blurred, from: blurred.extent),
+          let context = CGContext(
+              data: nil, width: picture.width, height: picture.height, bitsPerComponent: 8,
+              bytesPerRow: 0, space: CGColorSpace(name: CGColorSpace.sRGB)!,
+              bitmapInfo: CGImageAlphaInfo.premultipliedFirst.rawValue
+                  | CGBitmapInfo.byteOrder32Little.rawValue) else { fail("could not composite") }
+    let bounds = CGRect(origin: .zero, size: size)
+    context.draw(glass, in: bounds)
+    context.setFillColor(CGColor(gray: 1, alpha: 0.18))
+    context.fill(bounds)
+    context.draw(picture, in: bounds)
+    guard let result = context.makeImage() else { fail("could not composite") }
+    return result
+}
 
 func loadFrame() async throws -> CGImage {
     if let type = UTType(filenameExtension: inputURL.pathExtension), type.conforms(to: .image) {
@@ -78,6 +109,7 @@ do {
         renderer.settings.signal = signal
     }
     renderer.isEnabled = options["off"] == nil
+    renderer.glassMode = options["glass"] != nil
     renderer.displayAspect = Double(frame.width) / Double(frame.height)
     renderer.setSource(texture: texture)
 
@@ -97,11 +129,12 @@ do {
                                            time: time) else {
         fail("render failed")
     }
+    let output = try options["glass"].map { try composite(image, overGlass: $0) } ?? image
     guard let destination = CGImageDestinationCreateWithURL(
         outputURL as CFURL, UTType.png.identifier as CFString, 1, nil) else {
         fail("could not write \(outputURL.path)")
     }
-    CGImageDestinationAddImage(destination, image, nil)
+    CGImageDestinationAddImage(destination, output, nil)
     guard CGImageDestinationFinalize(destination) else { fail("could not write \(outputURL.path)") }
     print("wrote \(outputURL.path) (\(width)x\(height))")
 } catch {

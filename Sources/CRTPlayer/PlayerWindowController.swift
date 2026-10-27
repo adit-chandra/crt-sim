@@ -12,6 +12,8 @@ final class PlayerWindowController: NSWindowController, NSWindowDelegate, NSMenu
     private let chrome = ChromeState()
     private let renderer: CRTRenderer
     private let contentView = PlayerContentView()
+    /// Becomes the window's root view in glass-pane mode, hosting `contentView`.
+    private let glassView = NSGlassEffectView()
     private let metalView: CRTMetalView
     private let titleShade = TitleShadeView()
     private let controlsHost: NSHostingView<ControlBar>
@@ -52,6 +54,7 @@ final class PlayerWindowController: NSWindowController, NSWindowDelegate, NSMenu
         configure(window)
         layoutViews()
         configureRenderer()
+        setGlassPane(store.glassPane)
         observeState()
     }
 
@@ -168,6 +171,11 @@ final class PlayerWindowController: NSWindowController, NSWindowDelegate, NSMenu
                 }
             },
             Task { [weak self, store] in
+                for await glassPane in Observations({ store.glassPane }) {
+                    self?.setGlassPane(glassPane)
+                }
+            },
+            Task { [weak self, store] in
                 var lastSeen = store.announcement?.id ?? 0
                 for await announcement in Observations({ store.announcement }) {
                     guard let self else { return }
@@ -178,6 +186,32 @@ final class PlayerWindowController: NSWindowController, NSWindowDelegate, NSMenu
                 }
             },
         ]
+    }
+
+    // MARK: - Glass pane
+
+    /// Swaps between an opaque black window and a translucent one whose content
+    /// sits on a Liquid Glass pane, with the renderer drawing the picture as light.
+    private func setGlassPane(_ enabled: Bool) {
+        guard let window else { return }
+        renderer.glassMode = enabled
+        metalView.layer?.isOpaque = !enabled
+        contentView.layer?.backgroundColor = enabled ? NSColor.clear.cgColor : NSColor.black.cgColor
+        window.isOpaque = !enabled
+        window.backgroundColor = enabled ? .clear : .black
+
+        let frame = window.frame
+        if enabled, window.contentView !== glassView {
+            glassView.style = .regular
+            glassView.cornerRadius = 16
+            window.contentView = glassView
+            glassView.contentView = contentView
+        } else if !enabled, window.contentView !== contentView {
+            glassView.contentView = nil
+            window.contentView = contentView
+        }
+        window.setFrame(frame, display: true)
+        window.invalidateShadow()
     }
 
     // MARK: - Showing the window
@@ -402,6 +436,10 @@ final class PlayerWindowController: NSWindowController, NSWindowDelegate, NSMenu
         store.cyclePreset(by: -1)
     }
 
+    @objc func toggleGlassPane(_ sender: Any?) {
+        store.glassPane.toggle()
+    }
+
     @objc func showCRTSettings(_ sender: Any?) {
         setChromeVisible(true)
         chrome.showsSettings = true
@@ -415,6 +453,8 @@ final class PlayerWindowController: NSWindowController, NSWindowDelegate, NSMenu
             item.state = model.loops ? .on : .off
         case #selector(toggleCRTEffect(_:)):
             item.state = store.isEnabled ? .on : .off
+        case #selector(toggleGlassPane(_:)):
+            item.state = store.glassPane ? .on : .off
         case #selector(applyPreset(_:)):
             let id = item.representedObject as? String
             item.state = store.isEnabled && store.preset?.id == id ? .on : .off

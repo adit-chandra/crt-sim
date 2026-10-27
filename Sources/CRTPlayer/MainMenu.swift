@@ -47,6 +47,7 @@ enum MainMenu {
         presets.addItem(item("Previous Preset", #selector(PlayerWindowController.previousPreset(_:)), "["))
         presets.addItem(item("Next Preset", #selector(PlayerWindowController.nextPreset(_:)), "]"))
         view.addItem(item("CRT Preset", submenu: presets))
+        view.addItem(item("Glass Pane", #selector(PlayerWindowController.toggleGlassPane(_:)), "g", [.command, .option]))
         view.addItem(item("CRT Settings…", #selector(PlayerWindowController.showCRTSettings(_:)), "i"))
         view.addItem(.separator())
         view.addItem(item("Enter Full Screen", #selector(NSWindow.toggleFullScreen(_:)), "f", [.command, .control]))

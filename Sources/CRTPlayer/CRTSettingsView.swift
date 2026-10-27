@@ -24,6 +24,11 @@ struct CRTSettingsView: View {
                 .labelsHidden()
                 .fixedSize()
             }
+            Toggle("Glass Pane", isOn: $store.glassPane)
+                .toggleStyle(.switch)
+                .controlSize(.small)
+                .font(.system(size: 12))
+                .help("Show the picture as light on a pane of glass, so the desktop shows through dark areas")
 
             VStack(alignment: .leading, spacing: 14) {
                 section("Tube") {

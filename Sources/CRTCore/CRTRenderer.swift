@@ -45,6 +45,7 @@ private struct CRTUniforms {
     var powerV: Float = 1
     var powerBoost: Float = 1
     var staticAmount: Float = 0
+    var glassMode: Float = 0
 }
 
 /// Keeps a CoreVideo-backed texture alive until the GPU is done with it.
@@ -101,6 +102,9 @@ public final class CRTRenderer: NSObject, MTKViewDelegate {
     /// (`NSScreen.maximumExtendedDynamicRangeColorComponentValue`). Only used
     /// with floating-point output.
     public var headroom: Double = 1
+    /// Renders the picture as light over a transparent background, for drawing
+    /// on top of a glass pane. Needs a non-opaque layer.
+    public var glassMode = false
     /// Called at the start of every frame an `MTKView` asks for.
     public var willDraw: (@MainActor (CRTRenderer) -> Void)?
 
@@ -288,7 +292,8 @@ public final class CRTRenderer: NSObject, MTKViewDelegate {
         return CGImage(
             width: width, height: height, bitsPerComponent: 8, bitsPerPixel: 32,
             bytesPerRow: bytesPerRow, space: CGColorSpace(name: CGColorSpace.sRGB)!,
-            bitmapInfo: CGBitmapInfo(rawValue: CGImageAlphaInfo.noneSkipFirst.rawValue
+            bitmapInfo: CGBitmapInfo(rawValue: (glassMode ? CGImageAlphaInfo.premultipliedFirst
+                                                     : CGImageAlphaInfo.noneSkipFirst).rawValue
                 | CGBitmapInfo.byteOrder32Little.rawValue),
             provider: provider, decode: nil, shouldInterpolate: false, intent: .defaultIntent)
     }
@@ -325,6 +330,7 @@ public final class CRTRenderer: NSObject, MTKViewDelegate {
         u.rotation = Float(rotation & 3)
         u.outputLinear = outputIsLinear ? 1 : 0
         u.headroom = outputIsLinear ? Float(max(headroom, 1)) : 1
+        u.glassMode = glassMode ? 1 : 0
 
         let sourceTexture = source ?? blackTexture
         if let sourceOwner {
