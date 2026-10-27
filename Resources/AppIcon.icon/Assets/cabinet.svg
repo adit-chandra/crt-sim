@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024">
+  <!-- Antenna -->
+  <g stroke="#F5F5F7" stroke-width="24" stroke-linecap="round" fill="none">
+    <path d="M512 318 L384 172"/>
+    <path d="M512 318 L646 160"/>
+  </g>
+  <circle cx="384" cy="172" r="26" fill="#F5F5F7"/>
+  <circle cx="646" cy="160" r="26" fill="#F5F5F7"/>
+  <ellipse cx="512" cy="322" rx="74" ry="44" fill="#F5F5F7"/>
+  <!-- Cabinet with the screen cut out -->
+  <path fill="#F5F5F7" fill-rule="evenodd" d="
+    M284 318 H740 A132 132 0 0 1 872 450 V714 A132 132 0 0 1 740 846 H284 A132 132 0 0 1 152 714 V450 A132 132 0 0 1 284 318 Z
+    M310 384 Q512 370 714 384 Q802 384 802 472 Q816 571 802 670 Q802 758 714 758 Q512 772 310 758 Q222 758 222 670 Q208 571 222 472 Q222 384 310 384 Z"/>
+</svg>

@@ -46,4 +46,5 @@ Finder's Open With menu. Any format AVFoundation plays will work.
 - `Sources/crt-snapshot`: renders one frame through the shader to a PNG, which is
   useful for tuning:
   `swift run crt-snapshot movie.mp4 out.png --time 5 --preset arcade`
-- `scripts/make-icon.swift`: regenerates `Resources/AppIcon.icns`.
+- `Resources/AppIcon.icon`: the app icon, an Icon Composer document. Open it in
+  Icon Composer to edit it; `make app` compiles it with `actool`.

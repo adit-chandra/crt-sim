@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024">
+  <defs>
+    <clipPath id="tube">
+      <path d="M306 368 Q512 354 718 368 Q818 368 818 468 Q832 571 818 674 Q818 774 718 774 Q512 788 306 774 Q206 774 206 674 Q192 571 206 468 Q206 368 306 368 Z"/>
+    </clipPath>
+  </defs>
+  <g clip-path="url(#tube)">
+    <rect x="190" y="340" width="222" height="460" fill="#FF453A"/>
+    <rect x="410" y="340" width="206" height="460" fill="#32D74B"/>
+    <rect x="614" y="340" width="222" height="460" fill="#0A84FF"/>
+  </g>
+</svg>

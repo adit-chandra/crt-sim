@@ -13,9 +13,13 @@ rm -rf "$APP"
 mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources"
 cp "$BIN_DIR/CRTPlayer" "$APP/Contents/MacOS/CRTPlayer"
 cp Sources/CRTPlayer/Info.plist "$APP/Contents/Info.plist"
-if [ -f Resources/AppIcon.icns ]; then
-    cp Resources/AppIcon.icns "$APP/Contents/Resources/AppIcon.icns"
-fi
+# Compile the Icon Composer icon into Assets.car (Liquid Glass) plus an .icns fallback.
+xcrun actool Resources/AppIcon.icon \
+    --compile "$APP/Contents/Resources" \
+    --platform macosx --minimum-deployment-target 26.0 \
+    --app-icon AppIcon \
+    --output-partial-info-plist "$(mktemp -d)/partial.plist" \
+    --errors --warnings >/dev/null
 codesign --force --sign - "$APP" >/dev/null
 
 echo "Built $APP"
