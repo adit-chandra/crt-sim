@@ -5,14 +5,25 @@ import Observation
 /// App-wide CRT settings, shared by every player window and persisted across launches.
 @Observable
 final class CRTSettingsStore {
+    /// A preset switch or on/off toggle that windows announce, like a TV
+    /// changing channels. `id` makes repeats of the same text distinct.
+    struct Announcement: Equatable, Sendable {
+        let id: Int
+        let text: String
+    }
+
     static let shared = CRTSettingsStore()
 
     var settings: CRTSettings {
         didSet { save() }
     }
     var isEnabled: Bool {
-        didSet { UserDefaults.standard.set(isEnabled, forKey: Keys.enabled) }
+        didSet {
+            UserDefaults.standard.set(isEnabled, forKey: Keys.enabled)
+            announce(isEnabled ? (preset?.name ?? "CRT On") : "CRT Off")
+        }
     }
+    private(set) var announcement: Announcement?
 
     /// The preset matching the current settings exactly, if any.
     var preset: CRTPreset? {
@@ -33,7 +44,11 @@ final class CRTSettingsStore {
 
     func apply(_ preset: CRTPreset) {
         settings = preset.settings
-        isEnabled = true
+        if isEnabled {
+            announce(preset.name)
+        } else {
+            isEnabled = true
+        }
     }
 
     /// Steps through presets in order; from custom settings, starts at the first.
@@ -44,6 +59,10 @@ final class CRTSettingsStore {
         let next = index.map { (($0 + offset) % all.count + all.count) % all.count } ?? 0
         apply(all[next])
         return all[next]
+    }
+
+    private func announce(_ text: String) {
+        announcement = Announcement(id: (announcement?.id ?? 0) + 1, text: text)
     }
 
     private func save() {

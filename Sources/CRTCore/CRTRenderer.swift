@@ -24,8 +24,7 @@ private struct CRTUniforms {
     var rotation: Float = 0
     var curvature: Float = 0
     var scanlines: Float = 0
-    var sharpness: Float = 0
-    var colorBleed: Float = 0
+    var signalType: Float = 0
     var saturation: Float = 1
     var maskType: Float = 0
     var maskStrength: Float = 0
@@ -40,6 +39,12 @@ private struct CRTUniforms {
     var monoR: Float = 1
     var monoG: Float = 1
     var monoB: Float = 1
+    var headroom: Float = 1
+    var outputLinear: Float = 0
+    var powerH: Float = 1
+    var powerV: Float = 1
+    var powerBoost: Float = 1
+    var staticAmount: Float = 0
 }
 
 /// Keeps a CoreVideo-backed texture alive until the GPU is done with it.
@@ -59,11 +64,25 @@ private struct Pipelines {
 
 /// Renders video frames through a CRT simulation. Drive it either as an
 /// `MTKViewDelegate` or offscreen via `renderImage(width:height:)`.
+///
+/// With a floating-point output format the renderer writes linear extended-range
+/// light (pair it with an extended linear sRGB, EDR-enabled layer); 8-bit formats
+/// get gamma-encoded SDR.
 @MainActor
 public final class CRTRenderer: NSObject, MTKViewDelegate {
+    public enum Transition: Sendable {
+        case powerOn, powerOff, channelChange
+    }
+
+    private enum Power {
+        case on, off
+        case switching(toOn: Bool, start: CFTimeInterval, completion: (@MainActor () -> Void)?)
+    }
+
     public let device: MTLDevice
     private let commandQueue: MTLCommandQueue
     private let outputFormat: MTLPixelFormat
+    private let outputIsLinear: Bool
     private let pipelines: Pipelines
     private let blackTexture: MTLTexture
     private var textureCache: CVMetalTextureCache?
@@ -78,6 +97,10 @@ public final class CRTRenderer: NSObject, MTKViewDelegate {
     }
     /// Width / height of the picture as displayed (after rotation).
     public var displayAspect: Double = 16.0 / 9.0
+    /// Brightest value the display can currently show, relative to SDR white
+    /// (`NSScreen.maximumExtendedDynamicRangeColorComponentValue`). Only used
+    /// with floating-point output.
+    public var headroom: Double = 1
     /// Called at the start of every frame an `MTKView` asks for.
     public var willDraw: (@MainActor (CRTRenderer) -> Void)?
 
@@ -91,6 +114,8 @@ public final class CRTRenderer: NSObject, MTKViewDelegate {
     private var needsClear = true
     private var lastFrameTime: CFTimeInterval?
     private let epoch = CACurrentMediaTime()
+    private var power = Power.on
+    private var staticStart: CFTimeInterval?
 
     private static var pipelineCache: [String: Pipelines] = [:]
 
@@ -99,6 +124,7 @@ public final class CRTRenderer: NSObject, MTKViewDelegate {
         self.device = device
         self.commandQueue = queue
         self.outputFormat = outputPixelFormat
+        self.outputIsLinear = [.rgba16Float, .rgba32Float].contains(outputPixelFormat)
         self.pipelines = try Self.pipelines(device: device, outputFormat: outputPixelFormat)
 
         let desc = MTLTextureDescriptor.texture2DDescriptor(
@@ -142,6 +168,82 @@ public final class CRTRenderer: NSObject, MTKViewDelegate {
         signalDirty = true
     }
 
+    // MARK: - Transitions
+
+    /// Plays a picture-tube transition. `completion` runs after it finishes, or
+    /// right away when the effect is off and there is nothing to animate.
+    public func play(_ transition: Transition, at now: CFTimeInterval = CACurrentMediaTime(),
+                     completion: (@MainActor () -> Void)? = nil) {
+        switch transition {
+        case .channelChange:
+            staticStart = now
+            completion?()
+        case .powerOn, .powerOff:
+            let toOn = transition == .powerOn
+            guard isEnabled else {
+                power = toOn ? .on : .off
+                completion?()
+                return
+            }
+            power = .switching(toOn: toOn, start: now, completion: completion)
+        }
+    }
+
+    private func applyTransitions(to u: inout CRTUniforms, at time: CFTimeInterval) {
+        func ease(_ x: Double) -> Double { 1 - pow(1 - min(max(x, 0), 1), 3) }
+        func lerp(_ a: Double, _ b: Double, _ t: Double) -> Double { a + (b - a) * t }
+        let line = 0.006
+
+        var (h, v, boost) = (1.0, 1.0, 1.0)
+        switch power {
+        case .on:
+            break
+        case .off:
+            (h, v, boost) = (0.012, line, 0)
+        case let .switching(toOn, start, completion):
+            let t = time - start
+            let done: Bool
+            if toOn {
+                // A bright line sweeps out from the center, then opens vertically.
+                if t < 0.12 {
+                    (h, v, boost) = (ease(t / 0.12), line, 4)
+                } else {
+                    let p = ease((t - 0.12) / 0.4)
+                    (h, v, boost) = (1, lerp(line, 1, p), lerp(4, 1, p))
+                }
+                done = t >= 0.52
+            } else {
+                // The raster collapses to a line, then a dot that fades out.
+                if t < 0.2 {
+                    let p = ease(t / 0.2)
+                    (h, v, boost) = (1, lerp(1, line, p), lerp(1, 3, p))
+                } else if t < 0.4 {
+                    let p = ease((t - 0.2) / 0.2)
+                    (h, v, boost) = (lerp(1, 0.012, p), line, lerp(3, 7, p))
+                } else {
+                    (h, v, boost) = (0.012, line, 7 * (1 - ease((t - 0.4) / 0.5)))
+                }
+                done = t >= 0.9
+            }
+            if done {
+                power = toOn ? .on : .off
+                if let completion {
+                    // Deferred so the callback can tear down the view safely.
+                    Task { @MainActor in completion() }
+                }
+            }
+        }
+        u.powerH = Float(h)
+        u.powerV = Float(v)
+        u.powerBoost = Float(boost)
+
+        if let staticStart {
+            let t = (time - staticStart) / 0.35
+            u.staticAmount = Float(pow(max(1 - t, 0), 1.5))
+            if t >= 1 { self.staticStart = nil }
+        }
+    }
+
     // MARK: - MTKViewDelegate
 
     public func mtkView(_ view: MTKView, drawableSizeWillChange size: CGSize) {}
@@ -159,17 +261,18 @@ public final class CRTRenderer: NSObject, MTKViewDelegate {
 
     // MARK: - Offscreen
 
-    /// Renders one frame synchronously. `contentsScale` sizes the phosphor mask
-    /// as it would appear on a display with that backing scale.
+    /// Renders one frame synchronously at media time `time`. `contentsScale` sizes
+    /// the phosphor mask as it would appear on a display with that backing scale.
     public func renderImage(width: Int, height: Int, contentsScale: Double = 2,
-                            time: CFTimeInterval = 1) -> CGImage? {
+                            time: CFTimeInterval = CACurrentMediaTime()) -> CGImage? {
+        guard outputFormat == .bgra8Unorm else { return nil }
         let desc = MTLTextureDescriptor.texture2DDescriptor(
             pixelFormat: outputFormat, width: width, height: height, mipmapped: false)
         desc.usage = [.renderTarget, .shaderRead]
         desc.storageMode = device.hasUnifiedMemory ? .shared : .managed
         guard let target = device.makeTexture(descriptor: desc),
               let commandBuffer = commandQueue.makeCommandBuffer() else { return nil }
-        encode(into: commandBuffer, target: target, contentsScale: contentsScale, time: epoch + time)
+        encode(into: commandBuffer, target: target, contentsScale: contentsScale, time: time)
         if target.storageMode == .managed, let blit = commandBuffer.makeBlitCommandEncoder() {
             blit.synchronize(resource: target)
             blit.endEncoding()
@@ -220,6 +323,8 @@ public final class CRTRenderer: NSObject, MTKViewDelegate {
         u.time = Float((time - epoch).truncatingRemainder(dividingBy: 3600))
         u.hasSignal = source == nil ? 0 : 1
         u.rotation = Float(rotation & 3)
+        u.outputLinear = outputIsLinear ? 1 : 0
+        u.headroom = outputIsLinear ? Float(max(headroom, 1)) : 1
 
         let sourceTexture = source ?? blackTexture
         if let sourceOwner {
@@ -228,6 +333,11 @@ public final class CRTRenderer: NSObject, MTKViewDelegate {
         }
 
         guard isEnabled else {
+            // Nothing to animate without the tube; settle any pending power change.
+            if case let .switching(toOn, _, completion) = power {
+                power = toOn ? .on : .off
+                if let completion { Task { @MainActor in completion() } }
+            }
             pass(commandBuffer, target: target, pipeline: pipelines.passthrough,
                  textures: [sourceTexture], uniforms: &u)
             signalDirty = true
@@ -245,8 +355,7 @@ public final class CRTRenderer: NSObject, MTKViewDelegate {
         u.signalH = Float(signalTexture.height)
         u.curvature = Float(s.curvature)
         u.scanlines = Float(s.scanlines)
-        u.sharpness = Float(s.sharpness)
-        u.colorBleed = Float(s.colorBleed)
+        u.signalType = Float(s.signal.rawValue)
         u.saturation = Float(s.saturation)
         u.maskType = Float(s.maskType.rawValue)
         u.maskStrength = Float(s.maskStrength)
@@ -265,7 +374,11 @@ public final class CRTRenderer: NSObject, MTKViewDelegate {
             u.monoB = tint.z
         }
 
-        if signalDirty || source == nil {
+        applyTransitions(to: &u, at: time)
+
+        // Composite and RF artifacts move every frame, so they can't be cached.
+        let animatedSignal = s.signal == .composite || s.signal == .rf
+        if signalDirty || source == nil || animatedSignal {
             pass(commandBuffer, target: signalTexture, pipeline: pipelines.signal,
                  textures: [sourceTexture], uniforms: &u)
             signalDirty = false

@@ -34,7 +34,6 @@ struct CRTSettingsView: View {
                 section("Beam") {
                     slider("Scanlines", \.scanlines)
                     slider("Lines", \.lines, 120...720, step: 10) { "\(Int($0))" }
-                    slider("Sharpness", \.sharpness)
                     slider("Persistence", \.persistence)
                 }
                 section("Phosphors") {
@@ -56,7 +55,13 @@ struct CRTSettingsView: View {
                     }
                 }
                 section("Signal") {
-                    slider("Color Bleed", \.colorBleed)
+                    row("Input") {
+                        Picker("Input", selection: $store.settings.signal) {
+                            ForEach(CRTSettings.Signal.allCases, id: \.self) { Text($0.name).tag($0) }
+                        }
+                        .labelsHidden()
+                        .fixedSize()
+                    }
                     slider("Convergence", \.convergence)
                     slider("Interference", \.noise)
                     slider("Brightness", \.brightness, 0.5...1.6)

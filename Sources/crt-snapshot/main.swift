@@ -12,10 +12,13 @@ let usage = """
     usage: crt-snapshot <video-or-image> <output.png> [options]
       --time <seconds>    frame to grab from a video (default 1)
       --preset <id>       \(CRTPreset.all.map(\.id).joined(separator: ", "))
+      --signal <name>     override the preset's signal: rgb, svideo, composite, rf
       --width <px>        output width (default 1600)
       --height <px>       output height (default: match picture aspect)
       --scale <n>         backing scale to simulate for the phosphor mask (default 2)
       --off               bypass the CRT effect
+      --transition <name> render mid-transition: on, off, static
+      --at <seconds>      time into the transition (default 0.1)
     """
 
 func fail(_ message: String) -> Never {
@@ -67,6 +70,13 @@ do {
         guard let preset = CRTPreset.named(id) else { fail("unknown preset \(id)\n\(usage)") }
         renderer.settings = preset.settings
     }
+    if let name = options["signal"] {
+        let signals: [String: CRTSettings.Signal] = [
+            "rgb": .rgb, "svideo": .sVideo, "composite": .composite, "rf": .rf,
+        ]
+        guard let signal = signals[name] else { fail("unknown signal \(name)\n\(usage)") }
+        renderer.settings.signal = signal
+    }
     renderer.isEnabled = options["off"] == nil
     renderer.displayAspect = Double(frame.width) / Double(frame.height)
     renderer.setSource(texture: texture)
@@ -74,7 +84,17 @@ do {
     let width = Int(options["width"] ?? "1600") ?? 1600
     let height = Int(options["height"] ?? "") ?? Int((Double(width) / renderer.displayAspect).rounded())
     let scale = Double(options["scale"] ?? "2") ?? 2
-    guard let image = renderer.renderImage(width: width, height: height, contentsScale: scale) else {
+    var time = CACurrentMediaTime()
+    if let name = options["transition"] {
+        let transitions: [String: CRTRenderer.Transition] = [
+            "on": .powerOn, "off": .powerOff, "static": .channelChange,
+        ]
+        guard let transition = transitions[name] else { fail("unknown transition \(name)\n\(usage)") }
+        renderer.play(transition, at: time)
+        time += Double(options["at"] ?? "0.1") ?? 0.1
+    }
+    guard let image = renderer.renderImage(width: width, height: height, contentsScale: scale,
+                                           time: time) else {
         fail("render failed")
     }
     guard let destination = CGImageDestinationCreateWithURL(

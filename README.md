@@ -5,13 +5,19 @@ frame through a simulated cathode-ray tube.
 
 - Edge-to-edge video in a transparent title bar. The title bar and a floating Liquid Glass
   control bar fade out while the video plays.
-- Multi-pass Metal CRT shader: composite-style signal bandwidth and chroma
-  bleed, Gaussian scanline beam that widens with brightness, aperture-grille /
+- Multi-pass Metal CRT shader: a choice of video signal (RGB, S-Video,
+  composite with dot crawl and rainbowing, or RF with ghosting and snow),
+  Gaussian scanline beam that widens with brightness, aperture-grille /
   shadow-mask / slot-mask phosphors, curved faceplate with rounded corners,
   halation and bezel glow, phosphor persistence, misconvergence, hum bar and
   grain. If there's no picture yet, it shows analog snow.
-- Presets: Studio Monitor, Living Room TV, Arcade Cabinet, Green Terminal,
-  Amber Terminal. Each parameter can also be adjusted from the TV button in the control bar.
+- HDR output: on displays with extended dynamic range, lit phosphors can go
+  brighter than SDR white, so the mask and scanlines don't dim the picture.
+- Picture-tube transitions: windows power on and off like a CRT, and switching
+  presets cuts through a burst of static.
+- Presets: Classic (the default), Studio Monitor, Living Room TV, Arcade Cabinet,
+  Green Terminal, and Amber Terminal. Every parameter can also be adjusted from
+  the TV button in the control bar.
 
 Requires macOS 26 and Xcode 26 or later.
 
@@ -45,6 +51,8 @@ Finder's Open With menu. Any format AVFoundation plays will work.
 - `Sources/CRTPlayer`: the AppKit/SwiftUI app (document, window, controls).
 - `Sources/crt-snapshot`: renders one frame through the shader to a PNG, which is
   useful for tuning:
-  `swift run crt-snapshot movie.mp4 out.png --time 5 --preset arcade`
+  `swift run crt-snapshot movie.mp4 out.png --time 5 --preset arcade`. It can also
+  override the signal (`--signal composite`) or freeze a transition mid-way
+  (`--transition off --at 0.3`).
 - `Resources/AppIcon.icon`: the app icon, an Icon Composer document. Open it in
   Icon Composer to edit it; `make app` compiles it with `actool`.

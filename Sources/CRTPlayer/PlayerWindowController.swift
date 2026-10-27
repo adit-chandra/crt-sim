@@ -20,6 +20,8 @@ final class PlayerWindowController: NSWindowController, NSWindowDelegate, NSMenu
     private var chromeVisible = true
     private var pointerInside = false
     private var pendingShow = false
+    private var isPoweringOff = false
+    private var closeAfterPowerOff = false
     private var hideTask: Task<Void, Never>?
     private var osdTask: Task<Void, Never>?
     private var observationTasks: [Task<Void, Never>] = []
@@ -33,7 +35,7 @@ final class PlayerWindowController: NSWindowController, NSWindowDelegate, NSMenu
             fatalError("CRT Player requires a Metal-capable GPU.")
         }
         do {
-            renderer = try CRTRenderer(device: device)
+            renderer = try CRTRenderer(device: device, outputPixelFormat: .rgba16Float)
         } catch {
             fatalError("Could not build the CRT pipeline: \(error)")
         }
@@ -85,10 +87,13 @@ final class PlayerWindowController: NSWindowController, NSWindowDelegate, NSMenu
     }
 
     private func layoutViews() {
-        metalView.colorPixelFormat = .bgra8Unorm
+        // Linear extended-range output lets lit phosphors go brighter than SDR
+        // white on EDR displays, so the mask and scanlines don't dim the picture.
+        metalView.colorPixelFormat = .rgba16Float
+        metalView.colorspace = CGColorSpace(name: CGColorSpace.extendedLinearSRGB)
+        (metalView.layer as? CAMetalLayer)?.wantsExtendedDynamicRangeContent = true
         metalView.framebufferOnly = true
         metalView.preferredFramesPerSecond = 60
-        metalView.colorspace = CGColorSpace(name: CGColorSpace.sRGB)
 
         controlsHost.sizingOptions = [.intrinsicContentSize]
         osdHost.sizingOptions = [.intrinsicContentSize]
@@ -127,6 +132,7 @@ final class PlayerWindowController: NSWindowController, NSWindowDelegate, NSMenu
             renderer.settings = store.settings
             renderer.isEnabled = store.isEnabled
             renderer.rotation = model.rotation
+            renderer.headroom = (metalView.window?.screen?.maximumExtendedDynamicRangeColorComponentValue).map(Double.init) ?? 1
             if let size = model.videoSize, size.width > 0, size.height > 0 {
                 renderer.displayAspect = size.width / size.height
             }
@@ -161,6 +167,16 @@ final class PlayerWindowController: NSWindowController, NSWindowDelegate, NSMenu
                     self?.scheduleHide()
                 }
             },
+            Task { [weak self, store] in
+                var lastSeen = store.announcement?.id ?? 0
+                for await announcement in Observations({ store.announcement }) {
+                    guard let self else { return }
+                    guard let announcement, announcement.id > lastSeen else { continue }
+                    lastSeen = announcement.id
+                    if store.isEnabled { renderer.play(.channelChange) }
+                    showOSD(announcement.text)
+                }
+            },
         ]
     }
 
@@ -190,6 +206,8 @@ final class PlayerWindowController: NSWindowController, NSWindowDelegate, NSMenu
         if let size = model.videoSize {
             fitWindow(to: size, animate: !pendingShow)
         }
+        renderer.isEnabled = store.isEnabled
+        renderer.play(.powerOn)
         revealIfPending()
         model.player.play()
         scheduleHide()
@@ -253,6 +271,7 @@ final class PlayerWindowController: NSWindowController, NSWindowDelegate, NSMenu
     }
 
     private func pointerMoved() {
+        guard !isPoweringOff else { return }
         pointerInside = true
         setChromeVisible(true)
         scheduleHide()
@@ -264,6 +283,7 @@ final class PlayerWindowController: NSWindowController, NSWindowDelegate, NSMenu
     }
 
     private func playbackStateChanged() {
+        guard !isPoweringOff else { return }
         if !model.isPlaying, pointerInside {
             setChromeVisible(true)
         }
@@ -367,21 +387,19 @@ final class PlayerWindowController: NSWindowController, NSWindowDelegate, NSMenu
 
     @objc func toggleCRTEffect(_ sender: Any?) {
         store.isEnabled.toggle()
-        showOSD(store.isEnabled ? (store.preset?.name ?? "CRT On") : "CRT Off")
     }
 
     @objc func applyPreset(_ sender: NSMenuItem) {
         guard let id = sender.representedObject as? String, let preset = CRTPreset.named(id) else { return }
         store.apply(preset)
-        showOSD(preset.name)
     }
 
     @objc func nextPreset(_ sender: Any?) {
-        showOSD(store.cyclePreset(by: 1).name)
+        store.cyclePreset(by: 1)
     }
 
     @objc func previousPreset(_ sender: Any?) {
-        showOSD(store.cyclePreset(by: -1).name)
+        store.cyclePreset(by: -1)
     }
 
     @objc func showCRTSettings(_ sender: Any?) {
@@ -407,6 +425,34 @@ final class PlayerWindowController: NSWindowController, NSWindowDelegate, NSMenu
     }
 
     // MARK: - NSWindowDelegate
+
+    /// Plays the tube's power-off before letting the window close.
+    func windowShouldClose(_ sender: NSWindow) -> Bool {
+        if closeAfterPowerOff { return true }
+        guard store.isEnabled, model.loadError == nil, sender.isVisible, !sender.isMiniaturized else {
+            return true
+        }
+        guard !isPoweringOff else { return false }
+        isPoweringOff = true
+        model.player.pause()
+        hideTask?.cancel()
+        chrome.showsSettings = false
+        setChromeVisible(false)
+        renderer.play(.powerOff) { [weak self] in self?.finishClosing() }
+        // The animation only advances while the view draws; don't let a hidden
+        // window wait on it forever.
+        Task { [weak self] in
+            try? await Task.sleep(for: .seconds(1.5))
+            self?.finishClosing()
+        }
+        return false
+    }
+
+    private func finishClosing() {
+        guard !closeAfterPowerOff else { return }
+        closeAfterPowerOff = true
+        window?.performClose(nil)
+    }
 
     func windowWillEnterFullScreen(_ notification: Notification) {
         titlebarView?.alphaValue = 1
