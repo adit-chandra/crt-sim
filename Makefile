@@ -1,4 +1,4 @@
-.PHONY: app run promote snapshot clean
+.PHONY: app run install snapshot clean
 
 APP := build/CRT Player.app
 
@@ -8,7 +8,7 @@ app:
 run: app
 	open "$(APP)"
 
-promote: app
+install: app
 	rm -rf "/Applications/CRT Player.app"
 	ditto "$(APP)" "/Applications/CRT Player.app"
 	@echo "Installed /Applications/CRT Player.app"
