@@ -1,7 +1,16 @@
-# CRT Player
+<p align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="docs/icon-dark.png">
+    <img src="docs/icon.png" width="128" height="128" alt="CRT Player app icon">
+  </picture>
+</p>
 
-A minimal macOS video player, styled after QuickTime Player, that shows every
-frame through a simulated cathode-ray tube.
+<h1 align="center">CRT Player</h1>
+
+<p align="center">
+  A minimal macOS video player, styled after QuickTime Player, that shows every
+  frame through a simulated cathode-ray tube.
+</p>
 
 - Edge-to-edge video in a transparent title bar. The title bar and a floating Liquid Glass
   control bar fade out while the video plays.
@@ -62,4 +71,6 @@ Finder's Open With menu. Any format AVFoundation plays will work.
   (`--transition off --at 0.3`), or preview Glass Pane over a blurred backdrop
   (`--glass wallpaper.png`).
 - `Resources/AppIcon.icon`: the app icon, an Icon Composer document. Open it in
-  Icon Composer to edit it; `make app` compiles it with `actool`.
+  Icon Composer to edit it; `make app` compiles it with `actool`. The README's
+  `docs/icon.png` and `docs/icon-dark.png` are exported from it with Icon
+  Composer's `ictool` (`--rendition Default` / `Dark`, 128×128 @2x).
