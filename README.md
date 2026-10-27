@@ -29,6 +29,7 @@ Requires macOS 26 and Xcode 26 or later.
 ```sh
 make run          # builds "build/CRT Player.app" and opens it
 make app          # just build the app bundle
+make install      # builds the app and copies it to /Applications
 swift run CRTPlayer   # run unbundled during development
 ```
 
