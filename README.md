@@ -65,6 +65,33 @@ Dock icon, or with Finder's Open With menu. Any format AVFoundation plays will w
 | ⌥⌘L | Loop |
 | Double-click, ⌃⌘F | Full screen |
 
+## Simulation pipeline
+
+The CRT effect runs as a sequence of Metal passes. The signal and afterglow
+textures use the simulated tube's scanline resolution; the final pass draws
+the tube at the window's resolution.
+
+```mermaid
+flowchart TD
+    source["Video frame"] --> enabled{"CRT effect enabled?"}
+    enabled -->|Yes| signal["Analog signal<br/>RGB, S-Video, composite or RF<br/>Scanline sampling and signal artifacts"]
+    enabled -->|No| bypass["Passthrough"]
+    signal --> persist["Phosphor persistence<br/>Combine current signal with decaying afterglow"]
+    history["Previous frame's afterglow"] --> persist
+    persist -.->|Save for next frame| history
+    persist --> bloom["Bloom / halation<br/>Downsample, blur horizontally, blur vertically"]
+    persist --> tube["Tube rendering<br/>Curvature, scanline beam, phosphor mask<br/>Misconvergence, glow, vignette and noise"]
+    bloom --> tube
+    tube --> output["Display output<br/>SDR or extended-range HDR<br/>Transparency in Glass Pane mode"]
+    bypass --> output
+```
+
+Presets and individual settings control the passes; power and preset transitions
+animate their parameters. The signal pass reuses its result until the source or
+settings change, except for composite, RF and no-signal snow, which animate every
+frame. Two alternating afterglow textures carry phosphor persistence between
+frames.
+
 ## Layout
 
 - `Sources/CRTCore`: the renderer (`CRTRenderer`), Metal shaders, settings and presets.
