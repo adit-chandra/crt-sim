@@ -13,7 +13,7 @@
 </p>
 
 <p align="center">
-  <img src="docs/screenshot.jpg" width="900" alt="CRT Player playing a video with visible phosphor lines and curved picture-tube edges">
+  <img src="docs/screenshot.jpg" width="600" alt="CRT Player playing a video with visible phosphor lines and curved picture-tube edges">
 </p>
 
 - Edge-to-edge video in a transparent title bar. The title bar and a floating Liquid Glass
