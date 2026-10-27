@@ -12,12 +12,26 @@
         {
           "name": "Fringe",
           "image-name": "fringe.svg",
-          "glass": false
+          "glass": false,
+          "position": {
+            "scale": 1,
+            "translation-in-points": [
+              32,
+              26
+            ]
+          }
         },
         {
           "name": "Scanlines",
           "image-name": "scanlines.svg",
-          "glass": false
+          "glass": false,
+          "position": {
+            "scale": 1,
+            "translation-in-points": [
+              32,
+              26
+            ]
+          }
         }
       ],
       "shadow": {
@@ -36,12 +50,26 @@
         {
           "name": "Iridescence",
           "image-name": "iridescence.png",
-          "glass": false
+          "glass": false,
+          "position": {
+            "scale": 1,
+            "translation-in-points": [
+              32,
+              26
+            ]
+          }
         },
         {
           "name": "Pane",
           "image-name": "pane.svg",
-          "glass": true
+          "glass": true,
+          "position": {
+            "scale": 1,
+            "translation-in-points": [
+              32,
+              26
+            ]
+          }
         }
       ],
       "shadow": {
@@ -60,7 +88,14 @@
         {
           "name": "Caustic",
           "image-name": "caustic.png",
-          "glass": false
+          "glass": false,
+          "position": {
+            "scale": 1,
+            "translation-in-points": [
+              18,
+              14
+            ]
+          }
         }
       ],
       "shadow": {
