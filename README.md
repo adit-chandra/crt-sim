@@ -12,6 +12,10 @@
   frame through a simulated cathode-ray tube.
 </p>
 
+<p align="center">
+  <img src="docs/screenshot.jpg" width="900" alt="CRT Player playing a video with visible phosphor lines and curved picture-tube edges">
+</p>
+
 - Edge-to-edge video in a transparent title bar. The title bar and a floating Liquid Glass
   control bar fade out while the video plays.
 - Multi-pass Metal CRT shader: a choice of video signal (RGB, S-Video,
