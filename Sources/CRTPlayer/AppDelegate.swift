@@ -1,7 +1,7 @@
 import AppKit
 
 final class AppDelegate: NSObject, NSApplicationDelegate {
-    /// `--demo` opens the bundled test clip at launch instead of the Open panel.
+    /// `--demo` opens the bundled test clip at launch instead of an empty screen.
     private var opensDemo = CommandLine.arguments.contains("--demo")
 
     func applicationWillFinishLaunching(_ notification: Notification) {
@@ -13,15 +13,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         NSApp.activate()
     }
 
-    /// Like QuickTime Player: launching (or clicking the Dock icon) with nothing
-    /// open shows the Open panel instead of an empty window.
+    /// Launching (or clicking the Dock icon) with nothing open shows a dark,
+    /// empty screen; the next video opened or dropped on it plays there.
     func applicationOpenUntitledFile(_ sender: NSApplication) -> Bool {
-        let controller = NSDocumentController.shared
         if opensDemo, let demo = Bundle.main.url(forResource: "Demo", withExtension: "mp4") {
             opensDemo = false
-            controller.openDocument(withContentsOf: demo, display: true) { _, _, _ in }
+            NSDocumentController.shared.openDocument(withContentsOf: demo, display: true) { _, _, _ in }
         } else {
-            controller.openDocument(nil)
+            PlayerWindowController.showEmptyScreen()
         }
         return true
     }

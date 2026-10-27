@@ -7,7 +7,8 @@ import SwiftUI
 /// One borderless-looking player window, in the spirit of QuickTime Player: video
 /// edge to edge, title bar and floating controls that fade out while playing.
 final class PlayerWindowController: NSWindowController, NSWindowDelegate, NSMenuItemValidation {
-    private let model: PlayerModel
+    /// The video on screen; nil while the window is an empty screen.
+    private var model: PlayerModel?
     private let store = CRTSettingsStore.shared
     private let chrome = ChromeState()
     private let renderer: CRTRenderer
@@ -19,7 +20,7 @@ final class PlayerWindowController: NSWindowController, NSWindowDelegate, NSMenu
     private let glassView = NSGlassEffectView()
     private let metalView: CRTMetalView
     private let titleShade = TitleShadeView()
-    private let controlsHost: NSHostingView<ControlBar>
+    private let controlsHost = NSHostingView<ControlBar?>(rootView: nil)
     private let osdHost: PassiveHostingView<OSDView>
 
     private var chromeVisible = true
@@ -30,12 +31,30 @@ final class PlayerWindowController: NSWindowController, NSWindowDelegate, NSMenu
     private var hideTask: Task<Void, Never>?
     private var osdTask: Task<Void, Never>?
     private var observationTasks: [Task<Void, Never>] = []
+    private var modelTasks: [Task<Void, Never>] = []
     private var keyMonitor: Any?
 
     private static let skipInterval: Double = 10
 
-    init(model: PlayerModel) {
-        self.model = model
+    /// The window showing nothing yet, if one is open. The next video opened plays in it.
+    private static var emptyScreen: PlayerWindowController?
+
+    /// Shows a window with the tube on and nothing playing.
+    static func showEmptyScreen() {
+        let controller = emptyScreen ?? PlayerWindowController(model: nil)
+        emptyScreen = controller
+        controller.showWindow(nil)
+    }
+
+    /// A window for `model`: the empty screen if one is open, otherwise a new window.
+    static func playing(_ model: PlayerModel) -> PlayerWindowController {
+        guard let screen = emptyScreen, !screen.isPoweringOff else { return PlayerWindowController(model: model) }
+        emptyScreen = nil
+        screen.play(model)
+        return screen
+    }
+
+    private init(model: PlayerModel?) {
         guard let device = MTLCreateSystemDefaultDevice() else {
             fatalError("CRT Player requires a Metal-capable GPU.")
         }
@@ -45,7 +64,6 @@ final class PlayerWindowController: NSWindowController, NSWindowDelegate, NSMenu
             fatalError("Could not build the CRT pipeline: \(error)")
         }
         metalView = CRTMetalView(frame: .zero, device: device)
-        controlsHost = NSHostingView(rootView: ControlBar(model: model, chrome: chrome, store: store))
         osdHost = PassiveHostingView(rootView: OSDView(chrome: chrome))
 
         let window = NSWindow(
@@ -59,6 +77,14 @@ final class PlayerWindowController: NSWindowController, NSWindowDelegate, NSMenu
         configureRenderer()
         setGlassPane(store.glassPane)
         observeState()
+        if let model {
+            play(model)
+        } else {
+            window.title = "CRT Player"
+            renderer.setBlankSource()
+            renderer.isEnabled = store.isEnabled
+            renderer.play(.powerOn)
+        }
     }
 
     @available(*, unavailable)
@@ -137,9 +163,10 @@ final class PlayerWindowController: NSWindowController, NSWindowDelegate, NSMenu
             guard let self else { return }
             renderer.settings = store.settings
             renderer.isEnabled = store.isEnabled
-            renderer.rotation = model.rotation
             renderer.headroom = (metalView.window?.screen?.maximumExtendedDynamicRangeColorComponentValue).map(Double.init) ?? 1
             renderer.glassTransparency = store.glassTransparency
+            guard let model else { return }
+            renderer.rotation = model.rotation
             if let size = model.videoSize, size.width > 0, size.height > 0 {
                 renderer.displayAspect = size.width / size.height
             }
@@ -150,13 +177,14 @@ final class PlayerWindowController: NSWindowController, NSWindowDelegate, NSMenu
         metalView.delegate = renderer
     }
 
-    private func observeState() {
-        let model = model
-        let chrome = chrome
-        observationTasks = [
+    /// Starts showing `model`; an empty screen changes channel to it.
+    private func play(_ model: PlayerModel) {
+        self.model = model
+        controlsHost.rootView = ControlBar(model: model, chrome: chrome, store: store)
+        modelTasks = [
             Task { [weak self] in
                 for await loaded in Observations({ model.isLoaded }) where loaded {
-                    self?.didLoad()
+                    self?.didLoad(model)
                 }
             },
             Task { [weak self] in
@@ -169,6 +197,12 @@ final class PlayerWindowController: NSWindowController, NSWindowDelegate, NSMenu
                     self?.playbackStateChanged()
                 }
             },
+        ]
+    }
+
+    private func observeState() {
+        let chrome = chrome
+        observationTasks = [
             Task { [weak self] in
                 for await showing in Observations({ chrome.showsSettings }) where !showing {
                     self?.scheduleHide()
@@ -236,9 +270,9 @@ final class PlayerWindowController: NSWindowController, NSWindowDelegate, NSMenu
 
     // MARK: - Showing the window
 
-    /// Holds the window back until the video's size is known so it opens at the right shape.
+    /// Holds a new video's window back until its size is known so it opens at the right shape.
     override func showWindow(_ sender: Any?) {
-        guard !model.isLoaded else {
+        guard let model, !model.isLoaded, window?.isVisible != true else {
             super.showWindow(sender)
             return
         }
@@ -255,13 +289,18 @@ final class PlayerWindowController: NSWindowController, NSWindowDelegate, NSMenu
         super.showWindow(nil)
     }
 
-    private func didLoad() {
+    private func didLoad(_ model: PlayerModel) {
         guard model.loadError == nil else { return }
         if let size = model.videoSize {
             fitWindow(to: size, animate: !pendingShow)
         }
         renderer.isEnabled = store.isEnabled
-        renderer.play(.powerOn)
+        // A window that's about to appear powers on; one already on screen changes channel.
+        if pendingShow {
+            renderer.play(.powerOn)
+        } else if store.isEnabled {
+            renderer.play(.channelChange)
+        }
         revealIfPending()
         model.player.play()
         scheduleHide()
@@ -338,7 +377,7 @@ final class PlayerWindowController: NSWindowController, NSWindowDelegate, NSMenu
 
     private func playbackStateChanged() {
         guard !isPoweringOff else { return }
-        if !model.isPlaying, pointerInside {
+        if model?.isPlaying != true, pointerInside {
             setChromeVisible(true)
         }
         scheduleHide()
@@ -356,7 +395,7 @@ final class PlayerWindowController: NSWindowController, NSWindowDelegate, NSMenu
     private func hideChromeIfIdle() {
         guard !chrome.showsSettings else { return }
         if pointerInside {
-            guard model.isPlaying, !pointerOverControls else { return }
+            guard model?.isPlaying == true, !pointerOverControls else { return }
             if isFullScreen { NSCursor.setHiddenUntilMouseMoves(true) }
         }
         setChromeVisible(false)
@@ -401,9 +440,9 @@ final class PlayerWindowController: NSWindowController, NSWindowDelegate, NSMenu
         let modifiers = event.modifierFlags.intersection([.command, .option, .control, .shift])
         guard modifiers.isEmpty else { return false }
         switch event.keyCode {
-        case 49: model.togglePlayPause()                        // space
-        case 123: model.skip(by: -Self.skipInterval)            // ←
-        case 124: model.skip(by: Self.skipInterval)             // →
+        case 49: model?.togglePlayPause()                       // space
+        case 123: model?.skip(by: -Self.skipInterval)           // ←
+        case 124: model?.skip(by: Self.skipInterval)            // →
         case 126: adjustVolume(by: 0.1)                         // ↑
         case 125: adjustVolume(by: -0.1)                        // ↓
         case 53 where isFullScreen: window?.toggleFullScreen(nil) // esc
@@ -414,6 +453,7 @@ final class PlayerWindowController: NSWindowController, NSWindowDelegate, NSMenu
     }
 
     private func adjustVolume(by delta: Float) {
+        guard let model else { return }
         model.volume = min(max(model.volume + delta, 0), 1)
         model.isMuted = model.volume == 0
     }
@@ -421,22 +461,22 @@ final class PlayerWindowController: NSWindowController, NSWindowDelegate, NSMenu
     // MARK: - Menu actions
 
     @objc func togglePlayPause(_ sender: Any?) {
-        model.togglePlayPause()
+        model?.togglePlayPause()
         flashChrome()
     }
 
     @objc func skipBackward(_ sender: Any?) {
-        model.skip(by: -Self.skipInterval)
+        model?.skip(by: -Self.skipInterval)
         flashChrome()
     }
 
     @objc func skipForward(_ sender: Any?) {
-        model.skip(by: Self.skipInterval)
+        model?.skip(by: Self.skipInterval)
         flashChrome()
     }
 
     @objc func toggleLoop(_ sender: Any?) {
-        model.loops.toggle()
+        model?.loops.toggle()
     }
 
     @objc func toggleCRTEffect(_ sender: Any?) {
@@ -468,9 +508,16 @@ final class PlayerWindowController: NSWindowController, NSWindowDelegate, NSMenu
     func validateMenuItem(_ item: NSMenuItem) -> Bool {
         switch item.action {
         case #selector(togglePlayPause(_:)):
-            item.title = model.isPlaying ? "Pause" : "Play"
+            item.title = model?.isPlaying == true ? "Pause" : "Play"
+            return model != nil
+        case #selector(skipBackward(_:)), #selector(skipForward(_:)):
+            return model != nil
         case #selector(toggleLoop(_:)):
-            item.state = model.loops ? .on : .off
+            item.state = model?.loops == true ? .on : .off
+            return model != nil
+        case #selector(showCRTSettings(_:)):
+            // The settings popover hangs off the control bar, which an empty screen doesn't have.
+            return model != nil
         case #selector(toggleCRTEffect(_:)):
             item.state = store.isEnabled ? .on : .off
         case #selector(toggleGlassPane(_:)):
@@ -489,12 +536,12 @@ final class PlayerWindowController: NSWindowController, NSWindowDelegate, NSMenu
     /// Plays the tube's power-off before letting the window close.
     func windowShouldClose(_ sender: NSWindow) -> Bool {
         if closeAfterPowerOff { return true }
-        guard store.isEnabled, model.loadError == nil, sender.isVisible, !sender.isMiniaturized else {
+        guard store.isEnabled, model?.loadError == nil, sender.isVisible, !sender.isMiniaturized else {
             return true
         }
         guard !isPoweringOff else { return false }
         isPoweringOff = true
-        model.player.pause()
+        model?.player.pause()
         hideTask?.cancel()
         chrome.showsSettings = false
         setChromeVisible(false)
@@ -526,10 +573,12 @@ final class PlayerWindowController: NSWindowController, NSWindowDelegate, NSMenu
         metalView.isPaused = true
         metalView.delegate = nil
         renderer.willDraw = nil
-        model.invalidate()
+        model?.invalidate()
+        if Self.emptyScreen === self { Self.emptyScreen = nil }
         hideTask?.cancel()
         osdTask?.cancel()
         observationTasks.forEach { $0.cancel() }
+        modelTasks.forEach { $0.cancel() }
         if let keyMonitor { NSEvent.removeMonitor(keyMonitor) }
         keyMonitor = nil
     }

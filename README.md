@@ -43,8 +43,9 @@ make install      # builds the app and copies it to /Applications
 swift run CRTPlayer   # run unbundled during development
 ```
 
-Open videos with ⌘O, by dropping them on the window or Dock icon, or with
-Finder's Open With menu. Any format AVFoundation plays will work.
+Launching with nothing to open shows a dark, empty screen, and the first video
+you open plays in it. Open videos with ⌘O, by dropping them on the window or
+Dock icon, or with Finder's Open With menu. Any format AVFoundation plays will work.
 
 ## Shortcuts
 

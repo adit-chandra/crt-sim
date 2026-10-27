@@ -1,6 +1,6 @@
 import AppKit
 
-/// Launching starts fresh (the Open panel, or the demo with `--demo`): window
+/// Launching starts fresh (an empty screen, or the demo with `--demo`): window
 /// restoration doesn't reopen and replay whatever was open last time.
 ///
 /// Requests to open files that don't exist are dropped quietly too. AppKit can

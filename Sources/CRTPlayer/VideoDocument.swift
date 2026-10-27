@@ -12,6 +12,6 @@ final class VideoDocument: NSDocument {
 
     override func makeWindowControllers() {
         guard let fileURL else { return }
-        addWindowController(PlayerWindowController(model: PlayerModel(url: fileURL)))
+        addWindowController(PlayerWindowController.playing(PlayerModel(url: fileURL)))
     }
 }

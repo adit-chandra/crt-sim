@@ -175,6 +175,11 @@ public final class CRTRenderer: NSObject, MTKViewDelegate {
         signalDirty = true
     }
 
+    /// Shows a black picture instead of snow: the tube is on, with nothing to show.
+    public func setBlankSource() {
+        setSource(texture: blackTexture)
+    }
+
     // MARK: - Transitions
 
     /// Plays a picture-tube transition. `completion` runs after it finishes, or
