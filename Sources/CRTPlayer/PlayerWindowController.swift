@@ -76,6 +76,7 @@ final class PlayerWindowController: NSWindowController, NSWindowDelegate, NSMenu
         layoutViews()
         configureRenderer()
         setGlassPane(store.glassPane)
+        updateWindowLevel()
         observeState()
         if let model {
             play(model)
@@ -219,6 +220,11 @@ final class PlayerWindowController: NSWindowController, NSWindowDelegate, NSMenu
                 }
             },
             Task { [weak self, store] in
+                for await _ in Observations({ store.floatsOnTop }) {
+                    self?.updateWindowLevel()
+                }
+            },
+            Task { [weak self, store] in
                 var lastSeen = store.announcement?.id ?? 0
                 for await announcement in Observations({ store.announcement }) {
                     guard let self else { return }
@@ -266,6 +272,15 @@ final class PlayerWindowController: NSWindowController, NSWindowDelegate, NSMenu
     /// Darkens the glass toward smoked as brightness goes down.
     private func updateGlassTint() {
         glassView.tintColor = NSColor.black.withAlphaComponent(0.75 * (1 - store.glassBrightness))
+    }
+
+    // MARK: - Float on top
+
+    /// Floats the window above other apps' windows. A full-screen window has its
+    /// own space, so it stays at the normal level there.
+    private func updateWindowLevel() {
+        guard let window, !isFullScreen else { return }
+        window.level = store.floatsOnTop ? .floating : .normal
     }
 
     // MARK: - Showing the window
@@ -500,6 +515,10 @@ final class PlayerWindowController: NSWindowController, NSWindowDelegate, NSMenu
         store.glassPane.toggle()
     }
 
+    @objc func toggleFloatOnTop(_ sender: Any?) {
+        store.floatsOnTop.toggle()
+    }
+
     @objc func showCRTSettings(_ sender: Any?) {
         setChromeVisible(true)
         chrome.showsSettings = true
@@ -522,6 +541,8 @@ final class PlayerWindowController: NSWindowController, NSWindowDelegate, NSMenu
             item.state = store.isEnabled ? .on : .off
         case #selector(toggleGlassPane(_:)):
             item.state = store.glassPane ? .on : .off
+        case #selector(toggleFloatOnTop(_:)):
+            item.state = store.floatsOnTop ? .on : .off
         case #selector(applyPreset(_:)):
             let id = item.representedObject as? String
             item.state = store.isEnabled && store.preset?.id == id ? .on : .off
@@ -563,10 +584,16 @@ final class PlayerWindowController: NSWindowController, NSWindowDelegate, NSMenu
 
     func windowWillEnterFullScreen(_ notification: Notification) {
         titlebarView?.alphaValue = 1
+        window?.level = .normal
+    }
+
+    func windowDidFailToEnterFullScreen(_ window: NSWindow) {
+        updateWindowLevel()
     }
 
     func windowDidExitFullScreen(_ notification: Notification) {
         titlebarView?.alphaValue = chromeVisible ? 1 : 0
+        updateWindowLevel()
     }
 
     func windowWillClose(_ notification: Notification) {

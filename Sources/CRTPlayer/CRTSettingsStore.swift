@@ -36,6 +36,10 @@ final class CRTSettingsStore {
     var glassBrightness: Double {
         didSet { UserDefaults.standard.set(glassBrightness, forKey: Keys.glassBrightness) }
     }
+    /// Keep player windows above other apps' windows.
+    var floatsOnTop: Bool {
+        didSet { UserDefaults.standard.set(floatsOnTop, forKey: Keys.floatsOnTop) }
+    }
 
     /// The preset matching the current settings exactly, if any.
     var preset: CRTPreset? {
@@ -48,6 +52,7 @@ final class CRTSettingsStore {
         static let glassPane = "glassPane"
         static let glassTransparency = "glassTransparency"
         static let glassBrightness = "glassBrightness"
+        static let floatsOnTop = "floatsOnTop"
     }
 
     private init() {
@@ -58,6 +63,7 @@ final class CRTSettingsStore {
         glassPane = defaults.bool(forKey: Keys.glassPane)
         glassTransparency = defaults.object(forKey: Keys.glassTransparency) as? Double ?? 0.4
         glassBrightness = defaults.object(forKey: Keys.glassBrightness) as? Double ?? 0.45
+        floatsOnTop = defaults.bool(forKey: Keys.floatsOnTop)
     }
 
     func apply(_ preset: CRTPreset) {

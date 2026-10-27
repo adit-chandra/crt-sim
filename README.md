@@ -29,6 +29,7 @@
 - Glass Pane (⌥⌘G): the window turns into a Liquid Glass pane and the picture
   becomes light on it, so the desktop shows through the dark parts of the video,
   the scanline gaps, and the corners outside the tube.
+- Float on Top (⌥⌘T): keeps the player above other apps' windows.
 - Picture-tube transitions: windows power on and off like a CRT, and switching
   presets cuts through a burst of static.
 - Presets: Classic (the default), Studio Monitor, Living Room TV, Arcade Cabinet,
@@ -63,6 +64,7 @@ Dock icon, or with Finder's Open With menu. Any format AVFoundation plays will w
 | ⌘I | CRT settings |
 | ⌥⌘G | Glass Pane |
 | ⌥⌘L | Loop |
+| ⌥⌘T | Float on Top |
 | Double-click, ⌃⌘F | Full screen |
 
 ## Simulation pipeline
