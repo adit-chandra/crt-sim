@@ -1,55 +1,22 @@
 {
   "fill": {
     "linear-gradient": [
-      "srgb:1.00000,1.00000,1.00000,1.00000",
-      "srgb:0.88627,0.89412,0.91765,1.00000"
+      "srgb:0.98431,0.98431,0.99216,1.00000",
+      "srgb:0.86275,0.87451,0.90588,1.00000"
     ]
   },
   "groups": [
     {
-      "name": "Screen",
+      "name": "Accents",
       "layers": [
         {
-          "name": "Screen",
-          "image-name": "screen.svg",
-          "glass": true
-        }
-      ],
-      "shadow": {
-        "kind": "layer-color",
-        "opacity": 0.45
-      },
-      "specular": true,
-      "translucency": {
-        "enabled": false,
-        "value": 0.5
-      }
-    },
-    {
-      "name": "Rim",
-      "layers": [
+          "name": "Fringe",
+          "image-name": "fringe.svg",
+          "glass": false
+        },
         {
-          "name": "Rim",
-          "image-name": "rim.svg",
-          "glass": true
-        }
-      ],
-      "shadow": {
-        "kind": "neutral",
-        "opacity": 0.5
-      },
-      "specular": true,
-      "translucency": {
-        "enabled": true,
-        "value": 0.25
-      }
-    },
-    {
-      "name": "Halation",
-      "layers": [
-        {
-          "name": "Halation",
-          "image-name": "halation.svg",
+          "name": "Scanlines",
+          "image-name": "scanlines.svg",
           "glass": false
         }
       ],
@@ -61,14 +28,50 @@
       "translucency": {
         "enabled": false,
         "value": 0.5
-      },
-      "hidden": true,
-      "hidden-specializations": [
+      }
+    },
+    {
+      "name": "Pane",
+      "layers": [
         {
-          "appearance": "dark",
-          "value": false
+          "name": "Iridescence",
+          "image-name": "iridescence.png",
+          "glass": false
+        },
+        {
+          "name": "Pane",
+          "image-name": "pane.svg",
+          "glass": true
         }
-      ]
+      ],
+      "shadow": {
+        "kind": "neutral",
+        "opacity": 0.4
+      },
+      "specular": true,
+      "translucency": {
+        "enabled": true,
+        "value": 0.5
+      }
+    },
+    {
+      "name": "Caustic",
+      "layers": [
+        {
+          "name": "Caustic",
+          "image-name": "caustic.png",
+          "glass": false
+        }
+      ],
+      "shadow": {
+        "kind": "none",
+        "opacity": 0.5
+      },
+      "specular": false,
+      "translucency": {
+        "enabled": false,
+        "value": 0.5
+      }
     }
   ],
   "supported-platforms": {
