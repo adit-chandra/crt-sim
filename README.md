@@ -16,6 +16,10 @@
   <img src="docs/screenshot.jpg" width="600" alt="CRT Player playing a video with visible phosphor lines and curved picture-tube edges">
 </p>
 
+<p align="center">
+  <img src="docs/screenshot-anime.jpg" width="600" alt="CRT Player showing an animated tree scene with visible phosphor lines and rounded picture-tube corners">
+</p>
+
 - MKV, MP4, MOV, and other libmpv-supported video and audio formats.
 - Select embedded subtitle tracks or load external SRT, ASS/SSA, WebVTT, and
   bitmap subtitles from the captions button or View → Subtitles. Subtitles are
