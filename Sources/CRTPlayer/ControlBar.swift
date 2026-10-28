@@ -1,4 +1,5 @@
 import Observation
+import MediaPlayback
 import SwiftUI
 
 /// Window-chrome state shared between the window controller and SwiftUI overlays.
@@ -14,6 +15,7 @@ struct ControlBar: View {
     let model: PlayerModel
     @Bindable var chrome: ChromeState
     let store: CRTSettingsStore
+    let loadSubtitle: () -> Void
 
     var body: some View {
         VStack(spacing: 4) {
@@ -24,6 +26,28 @@ struct ControlBar: View {
                     ThinSlider(value: volume)
                         .frame(width: 72)
                     Spacer()
+                    Menu {
+                        Picker("Subtitle Track", selection: Binding(
+                            get: { model.selectedSubtitleID },
+                            set: { model.selectSubtitle($0) }
+                        )) {
+                            Text("Off").tag(nil as Int64?)
+                            ForEach(model.subtitleTracks) { track in
+                                Text(track.title).tag(Optional(track.id))
+                            }
+                        }
+                        Divider()
+                        Button("Load Subtitle File…", action: loadSubtitle)
+                    } label: {
+                        Image(systemName: "captions.bubble")
+                            .font(.system(size: 14, weight: .semibold))
+                            .frame(width: 28, height: 28)
+                    }
+                    .menuStyle(.borderlessButton)
+                    .menuIndicator(.hidden)
+                    .fixedSize()
+                    .help("Subtitles")
+                    .accessibilityLabel("Subtitles")
                     BarButton(symbol: "tv", size: 14, isActive: chrome.showsSettings) {
                         chrome.showsSettings.toggle()
                     }
@@ -57,6 +81,14 @@ struct ControlBar: View {
         .padding(.vertical, 8)
         .glassEffect(.regular, in: .rect(cornerRadius: 20))
         .environment(\.colorScheme, .dark)
+        .alert("Playback Error", isPresented: Binding(
+            get: { model.playbackError != nil },
+            set: { if !$0 { model.playbackError = nil } }
+        )) {
+            Button("OK") { model.playbackError = nil }
+        } message: {
+            Text(model.playbackError ?? "")
+        }
     }
 
     private var volume: Binding<Double> {

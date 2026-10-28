@@ -1,8 +1,10 @@
 import AppKit
 import CRTCore
+import MediaPlayback
 import MetalKit
 import Observation
 import SwiftUI
+import UniformTypeIdentifiers
 
 /// One borderless-looking player window, in the spirit of QuickTime Player: video
 /// edge to edge, title bar and floating controls that fade out while playing.
@@ -107,9 +109,15 @@ final class PlayerWindowController: NSWindowController, NSWindowDelegate, NSMenu
 
         contentView.onPointerActivity = { [weak self] in self?.pointerMoved() }
         contentView.onPointerExit = { [weak self] in self?.pointerExited() }
-        contentView.onDropURLs = { urls in
+        contentView.onDropURLs = { [weak self] urls in
             for url in urls {
-                NSDocumentController.shared.openDocument(withContentsOf: url, display: true) { _, _, _ in }
+                if MediaFileTypes.isSubtitle(url) {
+                    self?.model?.addSubtitle(url: url)
+                } else {
+                    NSDocumentController.shared.openDocument(withContentsOf: url, display: true) { _, _, error in
+                        if let error { NSApp.presentError(error) }
+                    }
+                }
             }
         }
 
@@ -167,7 +175,6 @@ final class PlayerWindowController: NSWindowController, NSWindowDelegate, NSMenu
             renderer.headroom = (metalView.window?.screen?.maximumExtendedDynamicRangeColorComponentValue).map(Double.init) ?? 1
             renderer.glassTransparency = store.glassTransparency
             guard let model else { return }
-            renderer.rotation = model.rotation
             if let size = model.videoSize, size.width > 0, size.height > 0 {
                 renderer.displayAspect = size.width / size.height
             }
@@ -181,7 +188,9 @@ final class PlayerWindowController: NSWindowController, NSWindowDelegate, NSMenu
     /// Starts showing `model`; an empty screen changes channel to it.
     private func play(_ model: PlayerModel) {
         self.model = model
-        controlsHost.rootView = ControlBar(model: model, chrome: chrome, store: store)
+        contentView.acceptsSubtitles = true
+        controlsHost.rootView = ControlBar(model: model, chrome: chrome, store: store,
+                                          loadSubtitle: { [weak self] in self?.openSubtitle(nil) })
         modelTasks = [
             Task { [weak self] in
                 for await loaded in Observations({ model.isLoaded }) where loaded {
@@ -196,6 +205,11 @@ final class PlayerWindowController: NSWindowController, NSWindowDelegate, NSMenu
             Task { [weak self] in
                 for await _ in Observations({ model.isPlaying }) {
                     self?.playbackStateChanged()
+                }
+            },
+            Task { [weak self] in
+                for await size in Observations({ model.videoSize }) {
+                    if let size { self?.fitWindow(to: size, animate: self?.pendingShow != true) }
                 }
             },
         ]
@@ -317,7 +331,7 @@ final class PlayerWindowController: NSWindowController, NSWindowDelegate, NSMenu
             renderer.play(.channelChange)
         }
         revealIfPending()
-        model.player.play()
+        model.play()
         scheduleHide()
     }
 
@@ -494,6 +508,38 @@ final class PlayerWindowController: NSWindowController, NSWindowDelegate, NSMenu
         model?.loops.toggle()
     }
 
+    @objc func openSubtitle(_ sender: Any?) {
+        guard let model, let window else { return }
+        let panel = NSOpenPanel()
+        panel.title = "Load Subtitle File"
+        panel.allowedContentTypes = MediaFileTypes.subtitleExtensions.compactMap { UTType(filenameExtension: $0) }
+        panel.allowsOtherFileTypes = true
+        panel.beginSheetModal(for: window) { response in
+            if response == .OK, let url = panel.url { model.addSubtitle(url: url) }
+        }
+    }
+
+    @objc func selectSubtitle(_ sender: NSMenuItem) {
+        model?.selectSubtitle((sender.representedObject as? NSNumber)?.int64Value)
+    }
+
+    func populateSubtitleMenu(_ menu: NSMenu) {
+        menu.removeAllItems()
+        let off = NSMenuItem(title: "Off", action: #selector(selectSubtitle(_:)), keyEquivalent: "")
+        off.state = model?.selectedSubtitleID == nil ? .on : .off
+        menu.addItem(off)
+        for track in model?.subtitleTracks ?? [] {
+            let item = NSMenuItem(title: track.title, action: #selector(selectSubtitle(_:)), keyEquivalent: "")
+            item.representedObject = NSNumber(value: track.id)
+            item.state = model?.selectedSubtitleID == track.id ? .on : .off
+            menu.addItem(item)
+        }
+        menu.addItem(.separator())
+        let load = NSMenuItem(title: "Load Subtitle File…", action: #selector(openSubtitle(_:)), keyEquivalent: "o")
+        load.keyEquivalentModifierMask = [.command, .option]
+        menu.addItem(load)
+    }
+
     @objc func toggleCRTEffect(_ sender: Any?) {
         store.isEnabled.toggle()
     }
@@ -529,7 +575,8 @@ final class PlayerWindowController: NSWindowController, NSWindowDelegate, NSMenu
         case #selector(togglePlayPause(_:)):
             item.title = model?.isPlaying == true ? "Pause" : "Play"
             return model != nil
-        case #selector(skipBackward(_:)), #selector(skipForward(_:)):
+        case #selector(skipBackward(_:)), #selector(skipForward(_:)),
+             #selector(openSubtitle(_:)), #selector(selectSubtitle(_:)):
             return model != nil
         case #selector(toggleLoop(_:)):
             item.state = model?.loops == true ? .on : .off
@@ -562,7 +609,7 @@ final class PlayerWindowController: NSWindowController, NSWindowDelegate, NSMenu
         }
         guard !isPoweringOff else { return false }
         isPoweringOff = true
-        model?.player.pause()
+        model?.pause()
         hideTask?.cancel()
         chrome.showsSettings = false
         setChromeVisible(false)

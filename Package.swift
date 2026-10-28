@@ -8,9 +8,17 @@ let package = Package(
     platforms: [.macOS(.v26)],
     targets: [
         .target(name: "CRTCore"),
+        .systemLibrary(name: "CMpv", pkgConfig: "mpv", providers: [.brew(["mpv"])]),
+        .target(name: "MPVBridge", dependencies: ["CMpv"],
+                cSettings: [.define("GL_SILENCE_DEPRECATION")], linkerSettings: [
+            .linkedFramework("OpenGL"), .linkedFramework("CoreVideo"),
+            .linkedFramework("IOSurface"),
+        ]),
+        .target(name: "MediaPlayback", dependencies: ["CMpv", "MPVBridge"],
+                swiftSettings: mainActorByDefault),
         .executableTarget(
             name: "CRTPlayer",
-            dependencies: ["CRTCore"],
+            dependencies: ["CRTCore", "MediaPlayback"],
             exclude: ["Info.plist"],
             swiftSettings: mainActorByDefault,
             linkerSettings: [
@@ -28,5 +36,8 @@ let package = Package(
             dependencies: ["CRTCore"],
             swiftSettings: mainActorByDefault
         ),
+        .testTarget(name: "MediaPlaybackTests", dependencies: ["MediaPlayback", "CRTCore"],
+                    resources: [.copy("Fixtures")],
+                    swiftSettings: mainActorByDefault),
     ]
 )

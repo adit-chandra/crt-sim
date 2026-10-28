@@ -3,12 +3,18 @@ import MetalKit
 import SwiftUI
 import UniformTypeIdentifiers
 
+enum MediaFileTypes {
+    static let subtitleExtensions = ["srt", "ass", "ssa", "vtt", "sub", "idx", "sup", "lrc"]
+    static func isSubtitle(_ url: URL) -> Bool { subtitleExtensions.contains(url.pathExtension.lowercased()) }
+}
+
 /// Root view of a player window: hosts the Metal view and overlays, tracks the
 /// pointer for auto-hiding chrome, drags the window, and accepts dropped files.
 final class PlayerContentView: NSView {
     var onPointerActivity: (() -> Void)?
     var onPointerExit: (() -> Void)?
     var onDropURLs: (([URL]) -> Void)?
+    var acceptsSubtitles = false
 
     private var trackingArea: NSTrackingArea?
 
@@ -65,9 +71,12 @@ final class PlayerContentView: NSView {
     private func movieURLs(in info: NSDraggingInfo) -> [URL] {
         let options: [NSPasteboard.ReadingOptionKey: Any] = [
             .urlReadingFileURLsOnly: true,
-            .urlReadingContentsConformToTypes: [UTType.audiovisualContent.identifier],
         ]
-        return info.draggingPasteboard.readObjects(forClasses: [NSURL.self], options: options) as? [URL] ?? []
+        let urls = info.draggingPasteboard.readObjects(forClasses: [NSURL.self], options: options) as? [URL] ?? []
+        return urls.filter {
+            (acceptsSubtitles && MediaFileTypes.isSubtitle($0)) || ["mkv", "mka"].contains($0.pathExtension.lowercased())
+                || UTType(filenameExtension: $0.pathExtension)?.conforms(to: .audiovisualContent) == true
+        }
     }
 }
 
