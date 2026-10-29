@@ -1,9 +1,10 @@
 .PHONY: app run demo install snapshot clean
 
 APP := build/CRT Player.app
+INSTALL_DIR ?= /Applications
 
 app:
-	./scripts/build-app.sh
+	@./scripts/build-app.sh
 
 run: app
 	open "$(APP)"
@@ -12,9 +13,7 @@ demo: app
 	open "$(APP)" --args --demo
 
 install: app
-	rm -rf "/Applications/CRT Player.app"
-	ditto "$(APP)" "/Applications/CRT Player.app"
-	@echo "Installed /Applications/CRT Player.app"
+	@./scripts/build-app.sh --install --install-dir "$(INSTALL_DIR)"
 
 snapshot:
 	swift build -c release --product crt-snapshot

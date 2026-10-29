@@ -57,6 +57,16 @@ make install      # builds the app and copies it to /Applications
 swift run CRTPlayer   # run unbundled during development
 ```
 
+Build and install output includes numbered stages, per-stage and total elapsed
+time, and library copy/signing progress. Long stages report that they are still
+working every 10 seconds, including while Swift waits for another build. Tool
+diagnostics remain visible; failures identify the stage and command. Color is
+used only in a terminal and can be disabled with `NO_COLOR=1`.
+Use `CONFIG=debug make app` for a debug build, or
+`make install INSTALL_DIR="$HOME/Applications"` to choose an install directory.
+Both build and install verify the app's signature before reporting success.
+To save the complete output, use `make app >build.log 2>&1`.
+
 Launching with nothing to open shows a dark, empty screen, and the first video
 you open plays in it. Open videos with ⌘O, by dropping them on the window or
 Dock icon, or with Finder's Open With menu. Playback uses libmpv, including Matroska
@@ -77,6 +87,7 @@ Run `swift test` for playback and Metal integration tests. The small synthetic
 fixtures can be regenerated with `scripts/make-test-media.sh` (requires FFmpeg).
 Set `CRT_TEST_ARTIFACTS=/tmp/crt-previews` when running tests to save subtitle
 images with and without the CRT effect.
+Build logging tests run with `python3 -m unittest discover -s scripts/tests -v`.
 
 ## Shortcuts
 
