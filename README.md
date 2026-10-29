@@ -13,8 +13,8 @@
 </p>
 
 <p align="center">
-  <img src="docs/screenshot.jpg" width="49%" alt="CRT Player playing a video with visible phosphor lines and curved picture-tube edges">
-  <img src="docs/screenshot-anime.jpg" width="49%" alt="CRT Player showing an animated tree scene with visible phosphor lines and rounded picture-tube corners">
+  <img src="docs/screenshot.webp" width="49%" alt="CRT Player playing a video with visible phosphor lines and curved picture-tube edges">
+  <img src="docs/screenshot-anime.webp" width="49%" alt="CRT Player showing an animated tree scene with visible phosphor lines and rounded picture-tube corners">
 </p>
 
 ## Contents
