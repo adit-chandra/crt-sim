@@ -3,6 +3,7 @@ import CRTCore
 
 enum MainMenu {
     private static let subtitleDelegate = SubtitleMenuDelegate()
+    private static let audioDelegate = AudioMenuDelegate()
     static func make() -> NSMenu {
         let appName = Bundle.main.object(forInfoDictionaryKey: "CFBundleName") as? String ?? "CRT Player"
         let main = NSMenu()
@@ -36,6 +37,10 @@ enum MainMenu {
         view.addItem(item("Skip Forward 10 Seconds", #selector(PlayerWindowController.skipForward(_:)),
                           key(NSRightArrowFunctionKey), []))
         view.addItem(item("Loop", #selector(PlayerWindowController.toggleLoop(_:)), "l", [.command, .option]))
+        let audio = NSMenu(title: "Audio Track")
+        audio.delegate = audioDelegate
+        audio.addItem(item("No Media Open", nil))
+        view.addItem(item("Audio Track", submenu: audio))
         let subtitles = NSMenu(title: "Subtitles")
         subtitles.delegate = subtitleDelegate
         subtitles.addItem(item("Load Subtitle File…", #selector(PlayerWindowController.openSubtitle(_:)),
@@ -91,6 +96,17 @@ enum MainMenu {
 
     private static func key(_ functionKey: Int) -> String {
         String(Character(UnicodeScalar(UInt16(functionKey))!))
+    }
+}
+
+private final class AudioMenuDelegate: NSObject, NSMenuDelegate {
+    func menuNeedsUpdate(_ menu: NSMenu) {
+        if let controller = NSApp.mainWindow?.windowController as? PlayerWindowController {
+            controller.populateAudioMenu(menu)
+        } else {
+            menu.removeAllItems()
+            menu.addItem(NSMenuItem(title: "No Media Open", action: nil, keyEquivalent: ""))
+        }
     }
 }
 

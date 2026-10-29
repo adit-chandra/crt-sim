@@ -202,7 +202,8 @@ final class PlayerWindowController: NSWindowController, NSWindowDelegate, NSMenu
         contentView.acceptsSubtitles = true
         controlsHost.rootView = ControlBar(model: model, chrome: chrome, store: store,
                                           onDrag: { [weak self] in self?.dragControls(by: $0) },
-                                          showSubtitleMenu: { [weak self] in self?.showSubtitleMenu(from: $0) })
+                                          showSubtitleMenu: { [weak self] in self?.showSubtitleMenu(from: $0) },
+                                          showAudioMenu: { [weak self] in self?.showAudioMenu(from: $0) })
         modelTasks = [
             Task { [weak self] in
                 for await loaded in Observations({ model.isLoaded }) where loaded {
@@ -561,15 +562,52 @@ final class PlayerWindowController: NSWindowController, NSWindowDelegate, NSMenu
     }
 
     private func showSubtitleMenu(from button: NSView) {
-        chrome.isTrackingSubtitleMenu = true
+        let menu = NSMenu(title: "Subtitles")
+        populateSubtitleMenu(menu)
+        showTrackMenu(menu, from: button)
+    }
+
+    @objc func selectAudio(_ sender: NSMenuItem) {
+        model?.selectAudio((sender.representedObject as? NSNumber)?.int64Value)
+    }
+
+    private func showAudioMenu(from button: NSView) {
+        let menu = NSMenu(title: "Audio Track")
+        populateAudioMenu(menu)
+        showTrackMenu(menu, from: button)
+    }
+
+    func populateAudioMenu(_ menu: NSMenu) {
+        menu.removeAllItems()
+        guard let model else {
+            menu.addItem(NSMenuItem(title: "No Media Open", action: nil, keyEquivalent: ""))
+            return
+        }
+        guard !model.audioTracks.isEmpty else {
+            menu.addItem(NSMenuItem(title: "No Audio Tracks", action: nil, keyEquivalent: ""))
+            return
+        }
+        let off = NSMenuItem(title: "Off", action: #selector(selectAudio(_:)), keyEquivalent: "")
+        off.state = model.selectedAudioID == nil ? .on : .off
+        menu.addItem(off)
+        for track in model.audioTracks {
+            let item = NSMenuItem(title: track.title, action: #selector(selectAudio(_:)), keyEquivalent: "")
+            item.representedObject = NSNumber(value: track.id)
+            item.state = model.selectedAudioID == track.id ? .on : .off
+            menu.addItem(item)
+        }
+    }
+
+    private func showTrackMenu(_ menu: NSMenu, from button: NSView) {
+        chrome.showsSettings = false
+        chrome.showsSubtitleSettings = false
+        chrome.isTrackingTrackMenu = true
         hideTask?.cancel()
         setChromeVisible(true)
         defer {
-            chrome.isTrackingSubtitleMenu = false
+            chrome.isTrackingTrackMenu = false
             scheduleHide()
         }
-        let menu = NSMenu(title: "Subtitles")
-        populateSubtitleMenu(menu)
         // Explicit targets also work while the menu's tracking window is key.
         for item in menu.items where !item.isSeparatorItem { item.target = self }
         menu.popUp(positioning: nil, at: NSPoint(x: 0, y: button.bounds.height + 6), in: button)
@@ -638,6 +676,8 @@ final class PlayerWindowController: NSWindowController, NSWindowDelegate, NSMenu
         case #selector(skipBackward(_:)), #selector(skipForward(_:)),
              #selector(openSubtitle(_:)), #selector(selectSubtitle(_:)), #selector(showSubtitleSettings(_:)):
             return model != nil
+        case #selector(selectAudio(_:)):
+            return model?.audioTracks.isEmpty == false
         case #selector(toggleLoop(_:)):
             item.state = model?.loops == true ? .on : .off
             return model != nil

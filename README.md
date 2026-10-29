@@ -21,6 +21,8 @@
 </p>
 
 - MKV, MP4, MOV, and other libmpv-supported video and audio formats.
+- Switch embedded audio tracks from the waveform button or View → Audio Track,
+  with titles, languages, codec and channel details, and an Off option.
 - Select embedded subtitle tracks or load external SRT, ASS/SSA, WebVTT, and
   bitmap subtitles from the captions button or View → Subtitles. Subtitles are
   drawn into the picture before the CRT effect, including on audio-only files.
@@ -76,6 +78,12 @@ video (`.mkv`) and audio (`.mka`), with hardware decoding where available.
 does not require Homebrew at runtime. Build for the macOS version and architecture
 you intend to run on; Homebrew bottles may require a newer macOS than the app's
 minimum. Third-party notices and a library manifest are included in the bundle.
+
+Use the waveform button or View → Audio Track to switch languages, commentary,
+or other embedded audio tracks without restarting playback. The current track
+is checked; tracks marked Default are the file's defaults. Audio selection is
+independent for each window and also works with audio-only files. Off disables
+the audio track; the speaker button mutes the selected track without changing it.
 
 Use the captions button or View → Subtitles to choose a track or turn subtitles
 off. Load Subtitle File… (⌥⌘O) attaches a subtitle file to the current player;
@@ -145,7 +153,7 @@ frames.
 ## Layout
 
 - `Sources/CRTCore`: the renderer (`CRTRenderer`), Metal shaders, settings and presets.
-- `Sources/MediaPlayback`: libmpv playback state, transport, and subtitle tracks.
+- `Sources/MediaPlayback`: libmpv playback state, transport, and audio/subtitle tracks.
 - `Sources/MPVBridge`: OpenGL/IOSurface bridge from libmpv to the Metal renderer.
 - `Sources/CRTPlayer`: the AppKit/SwiftUI app (document, window, controls).
 - `Sources/crt-snapshot`: renders one frame through the shader to a PNG, which is

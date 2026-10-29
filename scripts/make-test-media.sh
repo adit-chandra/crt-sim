@@ -14,3 +14,14 @@ ffmpeg -hide_banner -loglevel error -y -i tracks.mkv -map 0:a -map 0:s:0 -c copy
 ffmpeg -hide_banner -loglevel error -y -i tracks.mkv -map 0:a -c copy audio.m4a
 ffmpeg -hide_banner -loglevel error -y -display_rotation:v:0 90 -i tracks.mp4 \
     -map 0:v -map 0:a -c copy rotated.mp4
+
+# Distinct tones, a non-first default, and an unlabelled track exercise audio selection.
+ffmpeg -hide_banner -loglevel error -y -i tracks.mkv \
+    -f lavfi -i 'sine=frequency=880:sample_rate=48000' \
+    -f lavfi -i 'sine=frequency=1320:sample_rate=48000' \
+    -map 0:v -map 0:a -map 1:a -map 2:a -map 0:s -t 6 -c copy -c:a:1 aac -c:a:2 aac \
+    -metadata:s:a:0 language=eng -metadata:s:a:0 title=English \
+    -metadata:s:a:1 language=jpn -metadata:s:a:1 title=Japanese \
+    -metadata:s:a:2 language=und -disposition:a:0 0 -disposition:a:1 default -disposition:a:2 0 audio-tracks.mkv
+ffmpeg -hide_banner -loglevel error -y -i audio-tracks.mkv -map 0:a -c copy audio-tracks.m4a
+ffmpeg -hide_banner -loglevel error -y -i tracks.mkv -map 0:v -c copy silent.mkv

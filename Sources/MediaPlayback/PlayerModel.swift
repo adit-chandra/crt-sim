@@ -9,6 +9,11 @@ public struct SubtitleTrack: Identifiable, Equatable, Sendable {
     public let title: String
 }
 
+public struct AudioTrack: Identifiable, Equatable, Sendable {
+    public let id: Int64
+    public let title: String
+}
+
 /// One playback clock owns demuxing, decoding, seeking, and subtitle composition.
 @Observable
 public final class PlayerModel {
@@ -20,6 +25,8 @@ public final class PlayerModel {
     public private(set) var isLoaded = false
     public private(set) var subtitleTracks: [SubtitleTrack] = []
     public private(set) var selectedSubtitleID: Int64?
+    public private(set) var audioTracks: [AudioTrack] = []
+    public private(set) var selectedAudioID: Int64?
     public var playbackError: String?
     public var loops = false { didSet { set("loop-file", loops ? "inf" : "no") } }
     public var volume: Float {
@@ -159,6 +166,11 @@ public final class PlayerModel {
         set("sid", id.map(String.init) ?? "no")
     }
 
+    public func selectAudio(_ id: Int64?) {
+        guard id == nil || audioTracks.contains(where: { $0.id == id }) else { return }
+        set("aid", id.map(String.init) ?? "no")
+    }
+
     public func addSubtitle(url: URL) {
         command(["sub-add", url.path, "select"], request: 2)
     }
@@ -246,6 +258,19 @@ public final class PlayerModel {
         case "track-list":
             let tracks = data.assumingMemoryBound(to: mpv_node.self).pointee.array
             hasVideo = tracks.contains { $0.map["type"]?.string == "video" && $0.map["albumart"]?.flag != true }
+            let audio = tracks.map(\.map).filter { $0["type"]?.string == "audio" }
+            selectedAudioID = audio.first { $0["selected"]?.flag == true }?["id"]?.integer
+            audioTracks = audio.compactMap { info in
+                guard let id = info["id"]?.integer else { return nil }
+                var parts = ["Track \(id)"]
+                parts += [info["title"]?.string, info["lang"]?.string, info["codec"]?.string?.uppercased()]
+                    .compactMap { $0 }.filter { !$0.isEmpty }
+                if let channels = info["demux-channel-count"]?.integer, channels > 0 {
+                    parts.append(channels == 1 ? "Mono" : channels == 2 ? "Stereo" : "\(channels) channels")
+                }
+                if info["default"]?.flag == true { parts.append("Default") }
+                return AudioTrack(id: id, title: parts.joined(separator: " · "))
+            }
             subtitleTracks = tracks.compactMap { track in
                 let info = track.map
                 guard info["type"]?.string == "sub", let id = info["id"]?.integer else { return nil }

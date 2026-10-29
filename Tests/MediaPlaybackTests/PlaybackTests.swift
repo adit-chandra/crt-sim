@@ -9,6 +9,93 @@ import UniformTypeIdentifiers
 
 @Suite(.serialized)
 struct PlaybackTests {
+    @Test func embeddedAudioSelectionPreservesTransportAndSubtitles() async throws {
+        let model = PlayerModel(url: fixture("audio-tracks.mkv"), subtitleSettings: .init(defaults: nil))
+        defer { model.invalidate() }
+        model.isMuted = true
+        try await wait { model.isLoaded && model.audioTracks.count == 3 && model.subtitleTracks.count == 2 }
+        let tracks = model.audioTracks
+        try await wait { model.selectedAudioID == tracks[1].id }
+        #expect(tracks[0].title.contains("English · eng · AAC · Mono"))
+        #expect(tracks[1].title.contains("Japanese · jpn · AAC · Mono · Default"))
+        #expect(tracks[2].title.hasPrefix("Track \(tracks[2].id) · AAC"))
+
+        let subtitle = model.subtitleTracks[0].id
+        model.selectSubtitle(subtitle)
+        model.seek(to: 1.5)
+        _ = try await frame(model) { pixels($0, kind: .white) > 100 }
+        for track in tracks {
+            model.selectAudio(track.id)
+            try await wait { model.selectedAudioID == track.id }
+            #expect(!model.isPlaying)
+            #expect(abs(model.currentTime - 1.5) < 0.1)
+            #expect(model.selectedSubtitleID == subtitle)
+            #expect(model.isMuted)
+        }
+        model.selectAudio(Int64.max)
+        model.play()
+        try await wait { model.isPlaying && model.currentTime > 1.7 }
+        #expect(model.selectedAudioID == tracks[2].id, "Invalid track IDs leave the current selection alone")
+        model.selectAudio(tracks[0].id)
+        try await wait { model.selectedAudioID == tracks[0].id && model.currentTime > 1.9 }
+        #expect(model.isPlaying)
+        #expect(model.selectedSubtitleID == subtitle)
+        model.selectAudio(nil)
+        try await wait { model.selectedAudioID == nil && model.currentTime > 2.1 }
+        #expect(model.isPlaying)
+        model.selectAudio(tracks[1].id)
+        try await wait { model.selectedAudioID == tracks[1].id && model.currentTime > 2.3 }
+        #expect(model.isPlaying)
+        #expect(model.loadError == nil)
+        #expect(model.playbackError == nil)
+    }
+
+    @Test func audioOnlySelectionAndIndependentWindows() async throws {
+        let first = PlayerModel(url: fixture("audio-tracks.m4a"), subtitleSettings: .init(defaults: nil))
+        let second = PlayerModel(url: fixture("audio-tracks.m4a"), subtitleSettings: .init(defaults: nil))
+        defer { first.invalidate(); second.invalidate() }
+        first.isMuted = true
+        second.isMuted = true
+        try await wait { first.isLoaded && second.isLoaded && first.audioTracks.count == 3 && second.audioTracks.count == 3 }
+        let original = try #require(second.selectedAudioID)
+        let alternate = try #require(first.audioTracks.first { $0.id != original }).id
+        first.seek(to: 1.5)
+        first.selectAudio(alternate)
+        try await wait { first.selectedAudioID == alternate }
+        #expect(second.selectedAudioID == original)
+        #expect(first.videoSize == nil)
+        first.selectAudio(nil)
+        try await wait { first.selectedAudioID == nil }
+        first.selectAudio(original)
+        try await wait { first.selectedAudioID == original }
+        first.play()
+        try await wait { first.isPlaying && first.currentTime > 1.7 }
+        #expect(second.selectedAudioID == original)
+        #expect(!second.isPlaying)
+        #expect(first.loadError == nil)
+        #expect(first.playbackError == nil)
+    }
+
+    @Test func singleAndAbsentAudioTracks() async throws {
+        for name in ["tracks.mp4", "silent.mkv"] {
+            let model = PlayerModel(url: fixture(name), subtitleSettings: .init(defaults: nil))
+            defer { model.invalidate() }
+            model.isMuted = true
+            try await wait { model.isLoaded }
+            if name == "tracks.mp4" {
+                try await wait { model.audioTracks.count == 1 && model.selectedAudioID != nil }
+                #expect(model.selectedAudioID == model.audioTracks[0].id)
+            } else {
+                #expect(model.audioTracks.isEmpty)
+                #expect(model.selectedAudioID == nil)
+            }
+            model.play()
+            try await wait { model.isPlaying && model.currentTime > 0.2 }
+            #expect(model.loadError == nil)
+            #expect(model.playbackError == nil)
+        }
+    }
+
     @Test func matroskaTracksSeekAndCRT() async throws {
         let model = PlayerModel(url: fixture("tracks.mkv"), subtitleSettings: .init(defaults: nil))
         defer { model.invalidate() }

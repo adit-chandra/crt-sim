@@ -90,30 +90,3 @@ struct SubtitleSettingsView: View {
         }
     }
 }
-
-/// AppKit owns menu tracking, so playback redraws cannot replace an open menu.
-struct SubtitleMenuButton: NSViewRepresentable {
-    let showMenu: (NSView) -> Void
-
-    func makeCoordinator() -> Coordinator { Coordinator(showMenu: showMenu) }
-
-    func makeNSView(context: Context) -> NSButton {
-        let button = NSButton(image: NSImage(systemSymbolName: "captions.bubble", accessibilityDescription: "Subtitles")!,
-                              target: context.coordinator, action: #selector(Coordinator.open(_:)))
-        button.isBordered = false
-        button.contentTintColor = .white.withAlphaComponent(0.82)
-        button.toolTip = "Subtitles"
-        button.setAccessibilityLabel("Subtitles")
-        return button
-    }
-
-    func updateNSView(_ button: NSButton, context: Context) {
-        context.coordinator.showMenu = showMenu
-    }
-
-    final class Coordinator: NSObject {
-        var showMenu: (NSView) -> Void
-        init(showMenu: @escaping (NSView) -> Void) { self.showMenu = showMenu }
-        @objc func open(_ sender: NSButton) { showMenu(sender) }
-    }
-}

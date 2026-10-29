@@ -7,10 +7,10 @@ import SwiftUI
 final class ChromeState {
     var showsSettings = false
     var showsSubtitleSettings = false
-    var isTrackingSubtitleMenu = false
+    var isTrackingTrackMenu = false
 
     var keepsControlsVisible: Bool {
-        showsSettings || showsSubtitleSettings || isTrackingSubtitleMenu
+        showsSettings || showsSubtitleSettings || isTrackingTrackMenu
     }
     /// Transient on-screen-display text, like a TV's channel banner.
     var osdMessage: String?
@@ -23,17 +23,31 @@ struct ControlBar: View {
     let store: CRTSettingsStore
     var onDrag: (CGSize?) -> Void = { _ in }
     let showSubtitleMenu: (NSView) -> Void
+    let showAudioMenu: (NSView) -> Void
 
     var body: some View {
         VStack(spacing: 4) {
-            ZStack {
+            HStack(spacing: 12) {
                 HStack(spacing: 4) {
                     BarButton(symbol: volumeSymbol, size: 13) { model.isMuted.toggle() }
                         .frame(width: 26, alignment: .leading)
                     ThinSlider(value: volume)
-                        .frame(width: 72)
-                    Spacer()
-                    SubtitleMenuButton(showMenu: showSubtitleMenu)
+                        .frame(minWidth: 0, maxWidth: 72)
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+                HStack(spacing: 20) {
+                    BarButton(symbol: "gobackward.10", size: 16) { model.skip(by: -10) }
+                    BarButton(symbol: model.isPlaying ? "pause.fill" : "play.fill", size: 24) {
+                        model.togglePlayPause()
+                    }
+                    .frame(width: 34)
+                    BarButton(symbol: "goforward.10", size: 16) { model.skip(by: 10) }
+                }
+                HStack(spacing: 4) {
+                    TrackMenuButton(symbol: "waveform", title: "Audio Track", isEnabled: !model.audioTracks.isEmpty,
+                                    showMenu: showAudioMenu)
+                        .frame(width: 28, height: 28)
+                    TrackMenuButton(symbol: "captions.bubble", title: "Subtitles", showMenu: showSubtitleMenu)
                         .frame(width: 28, height: 28)
                         .popover(isPresented: $chrome.showsSubtitleSettings, arrowEdge: .top) {
                             SubtitleSettingsView(store: .shared)
@@ -47,14 +61,7 @@ struct ControlBar: View {
                         CRTSettingsView(store: store)
                     }
                 }
-                HStack(spacing: 20) {
-                    BarButton(symbol: "gobackward.10", size: 16) { model.skip(by: -10) }
-                    BarButton(symbol: model.isPlaying ? "pause.fill" : "play.fill", size: 24) {
-                        model.togglePlayPause()
-                    }
-                    .frame(width: 34)
-                    BarButton(symbol: "goforward.10", size: 16) { model.skip(by: 10) }
-                }
+                .frame(maxWidth: .infinity, alignment: .trailing)
             }
             PlaybackProgressView(model: model)
         }
