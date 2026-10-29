@@ -258,3 +258,7 @@ flowchart TD
 compiles it with `actool`. The README's `docs/icon.png` and `docs/icon-dark.png`
 are exported from it with Icon Composer's `ictool` (`--rendition Default` /
 `Dark`, 128×128 @2x).
+
+## License
+
+[MIT](LICENSE)
