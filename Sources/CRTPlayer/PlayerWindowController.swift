@@ -23,6 +23,9 @@ final class PlayerWindowController: NSWindowController, NSWindowDelegate, NSMenu
     private let metalView: CRTMetalView
     private let titleShade = TitleShadeView()
     private let controlsHost = NSHostingView<ControlBar?>(rootView: nil)
+    private var controlsCenterX: NSLayoutConstraint!
+    private var controlsBottom: NSLayoutConstraint!
+    private var controlsDragOrigin: NSPoint?
     private let osdHost: PassiveHostingView<OSDView>
 
     private var chromeVisible = true
@@ -136,7 +139,7 @@ final class PlayerWindowController: NSWindowController, NSWindowDelegate, NSMenu
         metalView.framebufferOnly = true
         metalView.preferredFramesPerSecond = 60
 
-        controlsHost.sizingOptions = [.intrinsicContentSize]
+        controlsHost.sizingOptions = [.minSize, .intrinsicContentSize]
         osdHost.sizingOptions = [.intrinsicContentSize]
 
         for view in [metalView, titleShade, osdHost, controlsHost] as [NSView] {
@@ -146,6 +149,10 @@ final class PlayerWindowController: NSWindowController, NSWindowDelegate, NSMenu
 
         let preferredWidth = controlsHost.widthAnchor.constraint(equalToConstant: 500)
         preferredWidth.priority = .defaultHigh
+        controlsCenterX = controlsHost.centerXAnchor.constraint(equalTo: contentView.centerXAnchor)
+        controlsBottom = controlsHost.bottomAnchor.constraint(equalTo: contentView.bottomAnchor, constant: -20)
+        controlsCenterX.priority = .defaultLow
+        controlsBottom.priority = .defaultLow
         NSLayoutConstraint.activate([
             metalView.leadingAnchor.constraint(equalTo: contentView.leadingAnchor),
             metalView.trailingAnchor.constraint(equalTo: contentView.trailingAnchor),
@@ -160,8 +167,12 @@ final class PlayerWindowController: NSWindowController, NSWindowDelegate, NSMenu
             osdHost.topAnchor.constraint(equalTo: contentView.topAnchor, constant: 44),
             osdHost.trailingAnchor.constraint(equalTo: contentView.trailingAnchor, constant: -32),
 
-            controlsHost.centerXAnchor.constraint(equalTo: contentView.centerXAnchor),
-            controlsHost.bottomAnchor.constraint(equalTo: contentView.bottomAnchor, constant: -20),
+            controlsCenterX,
+            controlsBottom,
+            controlsHost.leadingAnchor.constraint(greaterThanOrEqualTo: contentView.leadingAnchor, constant: 16),
+            controlsHost.trailingAnchor.constraint(lessThanOrEqualTo: contentView.trailingAnchor, constant: -16),
+            controlsHost.topAnchor.constraint(greaterThanOrEqualTo: contentView.topAnchor, constant: 36),
+            controlsHost.bottomAnchor.constraint(lessThanOrEqualTo: contentView.bottomAnchor, constant: -16),
             controlsHost.widthAnchor.constraint(lessThanOrEqualTo: contentView.widthAnchor, constant: -32),
             preferredWidth,
         ])
@@ -190,6 +201,7 @@ final class PlayerWindowController: NSWindowController, NSWindowDelegate, NSMenu
         self.model = model
         contentView.acceptsSubtitles = true
         controlsHost.rootView = ControlBar(model: model, chrome: chrome, store: store,
+                                          onDrag: { [weak self] in self?.dragControls(by: $0) },
                                           loadSubtitle: { [weak self] in self?.openSubtitle(nil) })
         modelTasks = [
             Task { [weak self] in
@@ -399,6 +411,29 @@ final class PlayerWindowController: NSWindowController, NSWindowDelegate, NSMenu
         scheduleHide()
     }
 
+    private func dragControls(by translation: CGSize?) {
+        guard let translation else {
+            controlsDragOrigin = nil
+            scheduleHide()
+            return
+        }
+        if controlsDragOrigin == nil {
+            contentView.layoutSubtreeIfNeeded()
+            controlsDragOrigin = controlsHost.frame.origin
+            hideTask?.cancel()
+            setChromeVisible(true)
+        }
+        guard let origin = controlsDragOrigin else { return }
+        let size = controlsHost.frame.size
+        let bounds = contentView.bounds
+        let x = min(max(origin.x + translation.width, bounds.minX + 16), bounds.maxX - size.width - 16)
+        let y = min(max(origin.y + translation.height, bounds.minY + 16), bounds.maxY - size.height - 36)
+        controlsCenterX.constant = x + size.width / 2 - bounds.midX
+        // Bottom-anchor constants run opposite to AppKit's upward-positive y axis.
+        controlsBottom.constant = bounds.minY - y
+        contentView.layoutSubtreeIfNeeded()
+    }
+
     private func pointerExited() {
         pointerInside = false
         scheduleHide(after: .milliseconds(300))
@@ -422,6 +457,7 @@ final class PlayerWindowController: NSWindowController, NSWindowDelegate, NSMenu
     }
 
     private func hideChromeIfIdle() {
+        guard controlsDragOrigin == nil else { return }
         guard !chrome.showsSettings else { return }
         if pointerInside {
             guard model?.isPlaying == true, !pointerOverControls else { return }

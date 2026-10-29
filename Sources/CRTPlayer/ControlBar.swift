@@ -15,6 +15,7 @@ struct ControlBar: View {
     let model: PlayerModel
     @Bindable var chrome: ChromeState
     let store: CRTSettingsStore
+    var onDrag: (CGSize?) -> Void = { _ in }
     let loadSubtitle: () -> Void
 
     var body: some View {
@@ -79,6 +80,8 @@ struct ControlBar: View {
         }
         .padding(.horizontal, 14)
         .padding(.vertical, 8)
+        .fixedSize(horizontal: false, vertical: true)
+        .background { ControlBarDragSurface(onDrag: onDrag) }
         .glassEffect(.regular, in: .rect(cornerRadius: 20))
         .environment(\.colorScheme, .dark)
         .alert("Playback Error", isPresented: Binding(

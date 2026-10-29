@@ -25,7 +25,8 @@
   bitmap subtitles from the captions button or View → Subtitles. Subtitles are
   drawn into the picture before the CRT effect, including on audio-only files.
 - Edge-to-edge video in a transparent title bar. The title bar and a floating Liquid Glass
-  control bar fade out while the video plays.
+  control bar fade out while the video plays. Drag an empty area of the control
+  bar to reposition it anywhere inside the player window.
 - Multi-pass Metal CRT shader: a choice of video signal (RGB, S-Video,
   composite with dot crawl and rainbowing, or RF with ghosting and snow),
   Gaussian scanline beam that widens with brightness, aperture-grille /
