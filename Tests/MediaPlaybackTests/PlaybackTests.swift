@@ -10,7 +10,7 @@ import UniformTypeIdentifiers
 @Suite(.serialized)
 struct PlaybackTests {
     @Test func matroskaTracksSeekAndCRT() async throws {
-        let model = PlayerModel(url: fixture("tracks.mkv"))
+        let model = PlayerModel(url: fixture("tracks.mkv"), subtitleSettings: .init(defaults: nil))
         defer { model.invalidate() }
         model.isMuted = true
         try #require(model.loadError == nil, "Initialization: \(String(describing: model.loadError))")
@@ -52,7 +52,7 @@ struct PlaybackTests {
     }
 
     @Test func mp4CaptionsAndTransport() async throws {
-        let model = PlayerModel(url: fixture("tracks.mp4"))
+        let model = PlayerModel(url: fixture("tracks.mp4"), subtitleSettings: .init(defaults: nil))
         defer { model.invalidate() }
         model.isMuted = true
         try #require(model.loadError == nil, "Initialization: \(String(describing: model.loadError))")
@@ -84,7 +84,7 @@ struct PlaybackTests {
 
     @Test func audioOnlyEmbeddedAndExternalSubtitles() async throws {
         for name in ["audio.mka", "audio.m4a"] {
-            let model = PlayerModel(url: fixture(name))
+            let model = PlayerModel(url: fixture(name), subtitleSettings: .init(defaults: nil))
             defer { model.invalidate() }
             model.isMuted = true
             try #require(model.loadError == nil, "Initialization: \(String(describing: model.loadError))")
@@ -107,7 +107,7 @@ struct PlaybackTests {
     }
 
     @Test func missingMediaFailsAndCloseIsIdempotent() async throws {
-        let model = PlayerModel(url: fixture("missing.mkv"))
+        let model = PlayerModel(url: fixture("missing.mkv"), subtitleSettings: .init(defaults: nil))
         try await wait { model.loadError != nil }
         #expect(model.isLoaded)
         model.invalidate()
@@ -116,8 +116,8 @@ struct PlaybackTests {
     }
 
     @Test func rotationAndIndependentWindows() async throws {
-        let first = PlayerModel(url: fixture("tracks.mkv"))
-        let second = PlayerModel(url: fixture("rotated.mp4"))
+        let first = PlayerModel(url: fixture("tracks.mkv"), subtitleSettings: .init(defaults: nil))
+        let second = PlayerModel(url: fixture("rotated.mp4"), subtitleSettings: .init(defaults: nil))
         defer { first.invalidate(); second.invalidate() }
         first.isMuted = true
         second.isMuted = true
@@ -142,7 +142,7 @@ struct PlaybackTests {
         let audio = directory.appendingPathComponent("sample.m4a")
         try FileManager.default.copyItem(at: fixture("audio.m4a"), to: audio)
         try FileManager.default.copyItem(at: fixture("english.srt"), to: directory.appendingPathComponent("sample.srt"))
-        let model = PlayerModel(url: audio)
+        let model = PlayerModel(url: audio, subtitleSettings: .init(defaults: nil))
         defer { model.invalidate() }
         model.isMuted = true
         try await wait { model.subtitleTracks.count == 1 }
@@ -150,6 +150,81 @@ struct PlaybackTests {
         model.selectSubtitle(model.subtitleTracks[0].id)
         model.seek(to: 1.5)
         _ = try await frame(model) { pixels($0, kind: .white) > 100 }
+    }
+
+    @Test func subtitleAppearanceUpdatesRenderedFrames() async throws {
+        let settings = SubtitleSettingsStore(defaults: nil)
+        let model = PlayerModel(url: fixture("tracks.mkv"), subtitleSettings: settings)
+        defer { model.invalidate() }
+        model.isMuted = true
+        try await wait { model.isLoaded && model.subtitleTracks.count == 2 }
+        model.selectSubtitle(model.subtitleTracks[0].id)
+        model.seek(to: 1.5)
+        let normal = try await frame(model) { pixels($0, kind: .white) > 100 }
+        let normalCount = pixels(normal, kind: .white)
+
+        settings.settings.scale = 1.8
+        _ = try await frame(model) { pixels($0, kind: .white) > normalCount * 2 }
+        settings.settings.color = .init(red: 0, green: 1, blue: 0)
+        _ = try await frame(model) { pixels($0, kind: .green) > 100 && pixels($0, kind: .white) == 0 }
+
+        settings.settings = SubtitleSettings()
+        _ = try await frame(model) { pixels($0, kind: .white) == normalCount }
+        settings.settings.bold = true
+        settings.settings.italic = true
+        settings.settings.font = "serif"
+        _ = try await frame(model) { pixels($0, kind: .white) > 100 && pixels($0, kind: .white) != normalCount }
+
+        // The ASS fixture is green. User colors must not replace authored styles
+        // until requested, and turning the override off must restore them.
+        settings.settings = SubtitleSettings()
+        model.selectSubtitle(model.subtitleTracks[1].id)
+        _ = try await frame(model) { pixels($0, kind: .green) > 100 }
+        settings.settings.overrideEmbeddedStyles = true
+        _ = try await frame(model) { pixels($0, kind: .white) > 100 && pixels($0, kind: .green) == 0 }
+        settings.settings.overrideEmbeddedStyles = false
+        _ = try await frame(model) { pixels($0, kind: .green) > 100 && pixels($0, kind: .white) == 0 }
+
+        // Also update captions while the clock and video are advancing.
+        model.loops = true
+        model.play()
+        try await wait { model.isPlaying && model.currentTime > 1.7 }
+        settings.settings.overrideEmbeddedStyles = true
+        settings.settings.backgroundOpacity = 0.6
+        settings.settings.outlineSize = 3
+        settings.settings.shadow = true
+        _ = try await frame(model) { pixels($0, kind: .white) > 100 }
+        model.selectSubtitle(nil)
+        _ = try await frame(model) { pixels($0, kind: .white) == 0 && pixels($0, kind: .green) == 0 }
+        #expect(model.isPlaying)
+        #expect(model.playbackError == nil)
+    }
+
+    @Test func subtitleAppearancePersistsAndReachesAllPlayers() async throws {
+        let suite = "CRTSubtitleTests.\(UUID().uuidString)"
+        let defaults = try #require(UserDefaults(suiteName: suite))
+        defer { defaults.removePersistentDomain(forName: suite) }
+        let store = SubtitleSettingsStore(defaults: defaults)
+        store.settings.scale = 1.5
+        store.settings.bold = true
+        #expect(SubtitleSettingsStore(defaults: defaults).settings == store.settings)
+
+        let first = PlayerModel(url: fixture("tracks.mp4"), subtitleSettings: store)
+        let second = PlayerModel(url: fixture("tracks.mp4"), subtitleSettings: store)
+        defer { first.invalidate(); second.invalidate() }
+        for model in [first, second] {
+            model.isMuted = true
+            try await wait { model.isLoaded && model.subtitleTracks.count == 1 }
+            model.selectSubtitle(model.subtitleTracks[0].id)
+            model.seek(to: 1.5)
+            _ = try await frame(model) { pixels($0, kind: .white) > 100 }
+        }
+        store.settings.color = .init(red: 0, green: 1, blue: 0)
+        for model in [first, second] {
+            _ = try await frame(model) { pixels($0, kind: .green) > 100 && pixels($0, kind: .white) == 0 }
+            #expect(model.playbackError == nil)
+        }
+        #expect(SubtitleSettingsStore(defaults: defaults).settings == store.settings)
     }
 
     private func fixture(_ name: String) -> URL {

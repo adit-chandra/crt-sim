@@ -84,6 +84,14 @@ automatically. Track labels include available titles and languages; embedded
 ASS styles and bitmap captions are rendered by libmpv. Each window has its own
 subtitle selection.
 
+Choose Subtitle Appearance… from either subtitle menu to adjust size, font,
+text and outline colors, bold/italic, drop shadow, and background opacity. Changes
+apply immediately to every player window and are saved across launches. Size
+adjustments preserve embedded ASS/SSA styling by default; enable Override
+embedded styles to apply custom fonts and colors to those tracks too. This can
+alter authored signs and positioning. Bitmap subtitles cannot be recolored.
+Reset restores the default appearance.
+
 Run `swift test` for playback and Metal integration tests. The small synthetic
 fixtures can be regenerated with `scripts/make-test-media.sh` (requires FFmpeg).
 Set `CRT_TEST_ARTIFACTS=/tmp/crt-previews` when running tests to save subtitle

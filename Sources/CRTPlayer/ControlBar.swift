@@ -6,6 +6,12 @@ import SwiftUI
 @Observable
 final class ChromeState {
     var showsSettings = false
+    var showsSubtitleSettings = false
+    var isTrackingSubtitleMenu = false
+
+    var keepsControlsVisible: Bool {
+        showsSettings || showsSubtitleSettings || isTrackingSubtitleMenu
+    }
     /// Transient on-screen-display text, like a TV's channel banner.
     var osdMessage: String?
 }
@@ -16,7 +22,7 @@ struct ControlBar: View {
     @Bindable var chrome: ChromeState
     let store: CRTSettingsStore
     var onDrag: (CGSize?) -> Void = { _ in }
-    let loadSubtitle: () -> Void
+    let showSubtitleMenu: (NSView) -> Void
 
     var body: some View {
         VStack(spacing: 4) {
@@ -27,29 +33,13 @@ struct ControlBar: View {
                     ThinSlider(value: volume)
                         .frame(width: 72)
                     Spacer()
-                    Menu {
-                        Picker("Subtitle Track", selection: Binding(
-                            get: { model.selectedSubtitleID },
-                            set: { model.selectSubtitle($0) }
-                        )) {
-                            Text("Off").tag(nil as Int64?)
-                            ForEach(model.subtitleTracks) { track in
-                                Text(track.title).tag(Optional(track.id))
-                            }
+                    SubtitleMenuButton(showMenu: showSubtitleMenu)
+                        .frame(width: 28, height: 28)
+                        .popover(isPresented: $chrome.showsSubtitleSettings, arrowEdge: .top) {
+                            SubtitleSettingsView(store: .shared)
                         }
-                        Divider()
-                        Button("Load Subtitle File…", action: loadSubtitle)
-                    } label: {
-                        Image(systemName: "captions.bubble")
-                            .font(.system(size: 14, weight: .semibold))
-                            .frame(width: 28, height: 28)
-                    }
-                    .menuStyle(.borderlessButton)
-                    .menuIndicator(.hidden)
-                    .fixedSize()
-                    .help("Subtitles")
-                    .accessibilityLabel("Subtitles")
                     BarButton(symbol: "tv", size: 14, isActive: chrome.showsSettings) {
+                        chrome.showsSubtitleSettings = false
                         chrome.showsSettings.toggle()
                     }
                     .help("CRT Settings")
@@ -66,17 +56,7 @@ struct ControlBar: View {
                     BarButton(symbol: "goforward.10", size: 16) { model.skip(by: 10) }
                 }
             }
-            HStack(spacing: 10) {
-                Text(formatTime(model.currentTime))
-                    .frame(minWidth: 38, alignment: .trailing)
-                ThinSlider(value: progress) { editing in
-                    editing ? model.beginScrubbing() : model.endScrubbing()
-                }
-                Text("-" + formatTime(max(model.duration - model.currentTime, 0)))
-                    .frame(minWidth: 42, alignment: .leading)
-            }
-            .font(.system(size: 11, weight: .medium).monospacedDigit())
-            .foregroundStyle(.white.opacity(0.7))
+            PlaybackProgressView(model: model)
         }
         .padding(.horizontal, 14)
         .padding(.vertical, 8)
@@ -103,14 +83,6 @@ struct ControlBar: View {
         }
     }
 
-    private var progress: Binding<Double> {
-        Binding {
-            model.duration > 0 ? model.currentTime / model.duration : 0
-        } set: { fraction in
-            model.scrub(to: fraction * model.duration)
-        }
-    }
-
     private var volumeSymbol: String {
         let level = model.isMuted ? 0 : model.volume
         switch level {
@@ -118,6 +90,33 @@ struct ControlBar: View {
         case ..<0.34: return "speaker.wave.1.fill"
         case ..<0.67: return "speaker.wave.2.fill"
         default: return "speaker.wave.3.fill"
+        }
+    }
+}
+
+/// Only the timeline observes the clock; menus and popovers keep a stable host.
+private struct PlaybackProgressView: View {
+    let model: PlayerModel
+
+    var body: some View {
+        HStack(spacing: 10) {
+            Text(formatTime(model.currentTime))
+                .frame(minWidth: 38, alignment: .trailing)
+            ThinSlider(value: progress) { editing in
+                editing ? model.beginScrubbing() : model.endScrubbing()
+            }
+            Text("-" + formatTime(max(model.duration - model.currentTime, 0)))
+                .frame(minWidth: 42, alignment: .leading)
+        }
+        .font(.system(size: 11, weight: .medium).monospacedDigit())
+        .foregroundStyle(.white.opacity(0.7))
+    }
+
+    private var progress: Binding<Double> {
+        Binding {
+            model.duration > 0 ? model.currentTime / model.duration : 0
+        } set: { fraction in
+            model.scrub(to: fraction * model.duration)
         }
     }
 }

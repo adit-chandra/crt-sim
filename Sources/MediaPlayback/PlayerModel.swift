@@ -33,6 +33,7 @@ public final class PlayerModel {
     @ObservationIgnored private var handle: OpaquePointer?
     @ObservationIgnored private var renderer: OpaquePointer?
     @ObservationIgnored private var timer: Timer?
+    @ObservationIgnored private var subtitleSettingsTask: Task<Void, Never>?
     @ObservationIgnored private var frame: CVPixelBuffer?
     @ObservationIgnored private var hasNewFrame = false
     @ObservationIgnored private var paused = true
@@ -44,7 +45,7 @@ public final class PlayerModel {
     @ObservationIgnored private var height = 0.0
     @ObservationIgnored private var rotation = 0.0
 
-    public init(url: URL) {
+    public init(url: URL, subtitleSettings: SubtitleSettingsStore = .shared) {
         volume = UserDefaults.standard.object(forKey: "volume") as? Float ?? 1
         do {
             guard let handle = mpv_create() else { throw PlaybackError("Could not create the media player.") }
@@ -60,6 +61,13 @@ public final class PlayerModel {
                 try check(mpv_set_option_string(handle, name, value), operation: "Configure playback")
             }
             try check(mpv_initialize(handle), operation: "Start playback")
+            for (name, value) in subtitleSettings.settings.mpvOptions { set(name, value) }
+            subtitleSettingsTask = Task { [weak self] in
+                for await settings in Observations({ subtitleSettings.settings }) {
+                    guard !Task.isCancelled else { return }
+                    for (name, value) in settings.mpvOptions { self?.set(name, value) }
+                }
+            }
             for (name, format) in [
                 ("time-pos", MPV_FORMAT_DOUBLE), ("duration", MPV_FORMAT_DOUBLE),
                 ("pause", MPV_FORMAT_FLAG), ("eof-reached", MPV_FORMAT_FLAG),
@@ -93,6 +101,8 @@ public final class PlayerModel {
     isolated deinit { invalidate() }
 
     public func invalidate() {
+        subtitleSettingsTask?.cancel()
+        subtitleSettingsTask = nil
         timer?.invalidate()
         timer = nil
         if let renderer { crt_video_free(renderer) }

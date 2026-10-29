@@ -202,7 +202,7 @@ final class PlayerWindowController: NSWindowController, NSWindowDelegate, NSMenu
         contentView.acceptsSubtitles = true
         controlsHost.rootView = ControlBar(model: model, chrome: chrome, store: store,
                                           onDrag: { [weak self] in self?.dragControls(by: $0) },
-                                          loadSubtitle: { [weak self] in self?.openSubtitle(nil) })
+                                          showSubtitleMenu: { [weak self] in self?.showSubtitleMenu(from: $0) })
         modelTasks = [
             Task { [weak self] in
                 for await loaded in Observations({ model.isLoaded }) where loaded {
@@ -231,7 +231,7 @@ final class PlayerWindowController: NSWindowController, NSWindowDelegate, NSMenu
         let chrome = chrome
         observationTasks = [
             Task { [weak self] in
-                for await showing in Observations({ chrome.showsSettings }) where !showing {
+                for await showing in Observations({ chrome.keepsControlsVisible }) where !showing {
                     self?.scheduleHide()
                 }
             },
@@ -458,7 +458,7 @@ final class PlayerWindowController: NSWindowController, NSWindowDelegate, NSMenu
 
     private func hideChromeIfIdle() {
         guard controlsDragOrigin == nil else { return }
-        guard !chrome.showsSettings else { return }
+        guard !chrome.keepsControlsVisible else { return }
         if pointerInside {
             guard model?.isPlaying == true, !pointerOverControls else { return }
             if isFullScreen { NSCursor.setHiddenUntilMouseMoves(true) }
@@ -502,6 +502,7 @@ final class PlayerWindowController: NSWindowController, NSWindowDelegate, NSMenu
     // MARK: - Keyboard
 
     private func handleKey(_ event: NSEvent) -> Bool {
+        guard !chrome.keepsControlsVisible else { return false }
         let modifiers = event.modifierFlags.intersection([.command, .option, .control, .shift])
         guard modifiers.isEmpty else { return false }
         switch event.keyCode {
@@ -559,6 +560,27 @@ final class PlayerWindowController: NSWindowController, NSWindowDelegate, NSMenu
         model?.selectSubtitle((sender.representedObject as? NSNumber)?.int64Value)
     }
 
+    private func showSubtitleMenu(from button: NSView) {
+        chrome.isTrackingSubtitleMenu = true
+        hideTask?.cancel()
+        setChromeVisible(true)
+        defer {
+            chrome.isTrackingSubtitleMenu = false
+            scheduleHide()
+        }
+        let menu = NSMenu(title: "Subtitles")
+        populateSubtitleMenu(menu)
+        // Explicit targets also work while the menu's tracking window is key.
+        for item in menu.items where !item.isSeparatorItem { item.target = self }
+        menu.popUp(positioning: nil, at: NSPoint(x: 0, y: button.bounds.height + 6), in: button)
+    }
+
+    @objc func showSubtitleSettings(_ sender: Any?) {
+        setChromeVisible(true)
+        chrome.showsSettings = false
+        chrome.showsSubtitleSettings = true
+    }
+
     func populateSubtitleMenu(_ menu: NSMenu) {
         menu.removeAllItems()
         let off = NSMenuItem(title: "Off", action: #selector(selectSubtitle(_:)), keyEquivalent: "")
@@ -574,6 +596,7 @@ final class PlayerWindowController: NSWindowController, NSWindowDelegate, NSMenu
         let load = NSMenuItem(title: "Load Subtitle File…", action: #selector(openSubtitle(_:)), keyEquivalent: "o")
         load.keyEquivalentModifierMask = [.command, .option]
         menu.addItem(load)
+        menu.addItem(NSMenuItem(title: "Subtitle Appearance…", action: #selector(showSubtitleSettings(_:)), keyEquivalent: ""))
     }
 
     @objc func toggleCRTEffect(_ sender: Any?) {
@@ -603,6 +626,7 @@ final class PlayerWindowController: NSWindowController, NSWindowDelegate, NSMenu
 
     @objc func showCRTSettings(_ sender: Any?) {
         setChromeVisible(true)
+        chrome.showsSubtitleSettings = false
         chrome.showsSettings = true
     }
 
@@ -612,7 +636,7 @@ final class PlayerWindowController: NSWindowController, NSWindowDelegate, NSMenu
             item.title = model?.isPlaying == true ? "Pause" : "Play"
             return model != nil
         case #selector(skipBackward(_:)), #selector(skipForward(_:)),
-             #selector(openSubtitle(_:)), #selector(selectSubtitle(_:)):
+             #selector(openSubtitle(_:)), #selector(selectSubtitle(_:)), #selector(showSubtitleSettings(_:)):
             return model != nil
         case #selector(toggleLoop(_:)):
             item.state = model?.loops == true ? .on : .off
@@ -648,6 +672,7 @@ final class PlayerWindowController: NSWindowController, NSWindowDelegate, NSMenu
         model?.pause()
         hideTask?.cancel()
         chrome.showsSettings = false
+        chrome.showsSubtitleSettings = false
         setChromeVisible(false)
         renderer.play(.powerOff) { [weak self] in self?.finishClosing() }
         // The animation only advances while the view draws; don't let a hidden
