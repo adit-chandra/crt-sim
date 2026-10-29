@@ -1,6 +1,6 @@
 .PHONY: app run demo install snapshot clean
 
-APP := build/CRT Player.app
+APP := build/CRT Sim.app
 INSTALL_DIR ?= /Applications
 
 app:

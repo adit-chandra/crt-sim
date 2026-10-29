@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Build or install CRT Player with timed, observable stages."""
+"""Build or install CRT Sim with timed, observable stages."""
 
 import argparse
 from contextlib import contextmanager
@@ -67,9 +67,9 @@ def run(*args):
 
 def build():
     config = os.environ.get("CONFIG", "release")
-    app = Path("build/CRT Player.app")
+    app = Path("build/CRT Sim.app")
     progress = Progress(7)
-    progress.line(f"CRT Player · Build · {config}", "1")
+    progress.line(f"CRT Sim · Build · {config}", "1")
     progress.line(f"  Output: {app.resolve()}", "2")
 
     with progress.stage("Check build dependencies"):
@@ -95,7 +95,7 @@ def build():
 
     with progress.stage("Compile app icon"):
         # actool emits both Assets.car and an .icns fallback from the Composer icon.
-        with tempfile.TemporaryDirectory(prefix="crt-player-icon-") as temporary:
+        with tempfile.TemporaryDirectory(prefix="crt-sim-icon-") as temporary:
             run("xcrun", "actool", "Resources/AppIcon.icon", "--compile", resources,
                 "--platform", "macosx", "--minimum-deployment-target", "26.0",
                 "--app-icon", "AppIcon", "--output-partial-info-plist",
@@ -112,10 +112,10 @@ def build():
 
 
 def install(install_dir):
-    app = Path("build/CRT Player.app")
+    app = Path("build/CRT Sim.app")
     destination = install_dir / app.name
     progress = Progress(3)
-    progress.line("CRT Player · Install", "1")
+    progress.line("CRT Sim · Install", "1")
     progress.line(f"  Source: {app.resolve()}\n  Install: {destination}", "2")
 
     with progress.stage("Verify source app"):

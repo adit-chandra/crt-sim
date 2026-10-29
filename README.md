@@ -1,11 +1,11 @@
 <p align="center">
   <picture>
     <source media="(prefers-color-scheme: dark)" srcset="docs/icon-dark.png">
-    <img src="docs/icon.png" width="128" height="128" alt="CRT Player app icon">
+    <img src="docs/icon.png" width="128" height="128" alt="CRT Sim app icon">
   </picture>
 </p>
 
-<h1 align="center">CRT Player</h1>
+<h1 align="center">CRT Sim</h1>
 
 <p align="center">
   A minimal macOS video player, styled after QuickTime Player, that shows every
@@ -13,8 +13,8 @@
 </p>
 
 <p align="center">
-  <img src="docs/screenshot.webp" width="49%" alt="CRT Player playing a video with visible phosphor lines and curved picture-tube edges">
-  <img src="docs/screenshot-anime.webp" width="49%" alt="CRT Player showing an animated tree scene with visible phosphor lines and rounded picture-tube corners">
+  <img src="docs/screenshot.webp" width="49%" alt="CRT Sim playing a video with visible phosphor lines and curved picture-tube edges">
+  <img src="docs/screenshot-anime.webp" width="49%" alt="CRT Sim showing an animated tree scene with visible phosphor lines and rounded picture-tube corners">
 </p>
 
 ## Contents
@@ -22,7 +22,7 @@
 - [Features](#features)
 - [Requirements](#requirements)
 - [Getting started](#getting-started)
-- [Using CRT Player](#using-crt-player)
+- [Using CRT Sim](#using-crt-sim)
 - [Keyboard shortcuts](#keyboard-shortcuts)
 - [Development](#development)
 - [How the simulation works](#how-the-simulation-works)
@@ -79,7 +79,7 @@ brew install mpv pkg-config
 make install
 ```
 
-This builds `CRT Player.app` and copies it to `/Applications`. The playback
+This builds `CRT Sim.app` and copies it to `/Applications`. The playback
 libraries are bundled into the app, so it doesn't need Homebrew at runtime.
 
 To try it without installing:
@@ -93,7 +93,7 @@ make demo   # build and open a bundled test pattern
 > Build on the macOS version and architecture you intend to run on. Homebrew
 > bottles may require a newer macOS than the app's minimum.
 
-## Using CRT Player
+## Using CRT Sim
 
 ### Opening files
 
@@ -167,7 +167,7 @@ can't be recolored.
 
 | Command | What it does |
 | --- | --- |
-| `make app` | Build `build/CRT Player.app` |
+| `make app` | Build `build/CRT Sim.app` |
 | `make run` | Build and open the app |
 | `make demo` | Build and open a bundled test pattern (the app's `--demo` flag) |
 | `make install` | Build and copy the app to `/Applications` |

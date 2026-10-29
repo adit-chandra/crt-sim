@@ -61,7 +61,7 @@ final class PlayerWindowController: NSWindowController, NSWindowDelegate, NSMenu
 
     private init(model: PlayerModel?) {
         guard let device = MTLCreateSystemDefaultDevice() else {
-            fatalError("CRT Player requires a Metal-capable GPU.")
+            fatalError("CRT Sim requires a Metal-capable GPU.")
         }
         do {
             renderer = try CRTRenderer(device: device, outputPixelFormat: .rgba16Float)
@@ -86,7 +86,7 @@ final class PlayerWindowController: NSWindowController, NSWindowDelegate, NSMenu
         if let model {
             play(model)
         } else {
-            window.title = "CRT Player"
+            window.title = "CRT Sim"
             renderer.setBlankSource()
             renderer.isEnabled = store.isEnabled
             renderer.play(.powerOn)

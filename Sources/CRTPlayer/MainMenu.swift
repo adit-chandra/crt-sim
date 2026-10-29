@@ -5,7 +5,7 @@ enum MainMenu {
     private static let subtitleDelegate = SubtitleMenuDelegate()
     private static let audioDelegate = AudioMenuDelegate()
     static func make() -> NSMenu {
-        let appName = Bundle.main.object(forInfoDictionaryKey: "CFBundleName") as? String ?? "CRT Player"
+        let appName = Bundle.main.object(forInfoDictionaryKey: "CFBundleName") as? String ?? "CRT Sim"
         let main = NSMenu()
 
         let app = submenu(of: main, title: appName)
