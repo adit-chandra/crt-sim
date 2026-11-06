@@ -1,7 +1,7 @@
 #!/bin/bash
 # Regenerate the small, synthetic playback fixtures; no copyrighted media needed.
 set -euo pipefail
-cd "$(dirname "$0")/../Tests/MediaPlaybackTests/Fixtures"
+cd "$(dirname "$0")/../Tests/Fixtures"
 ffmpeg -hide_banner -loglevel error -y \
     -f lavfi -i 'color=black:s=640x360:r=24,drawbox=x=0:y=0:w=iw:h=60:color=red:t=fill' \
     -f lavfi -i 'sine=frequency=440:sample_rate=48000' -i english.srt -i styled.ass \

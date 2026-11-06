@@ -1,0 +1,556 @@
+// !$*UTF8*$!
+{
+	"archiveVersion" = 1;
+	"classes" = {
+	};
+	"objectVersion" = 60;
+	"objects" = {
+		"7E683BFFFFDE0CB09DD09E17" = {
+			"isa" = "XCLocalSwiftPackageReference";
+			"relativePath" = "../..";
+		};
+		"9C9C442242136BDFDA736A6A" = {
+			"isa" = "PBXFileReference";
+			"lastKnownFileType" = "sourcecode.swift";
+			"path" = "CRTPlayer/CRTPlayerApp.swift";
+			"sourceTree" = "<group>";
+		};
+		"C3FA3924EBC8E7B9F48BD8D6" = {
+			"isa" = "PBXFileReference";
+			"lastKnownFileType" = "sourcecode.swift";
+			"path" = "CRTPlayer/CRTVideoView.swift";
+			"sourceTree" = "<group>";
+		};
+		"9E2E95153C4EF07B1FCB2C59" = {
+			"isa" = "PBXFileReference";
+			"lastKnownFileType" = "sourcecode.swift";
+			"path" = "CRTPlayer/IOSCRTSettingsView.swift";
+			"sourceTree" = "<group>";
+		};
+		"DAADF8066007A4EF31621F93" = {
+			"isa" = "PBXFileReference";
+			"lastKnownFileType" = "sourcecode.swift";
+			"path" = "CRTPlayer/IOSPlayerModel.swift";
+			"sourceTree" = "<group>";
+		};
+		"3D3F6DB6D2AA3DD6F0E06B9E" = {
+			"isa" = "PBXFileReference";
+			"lastKnownFileType" = "sourcecode.swift";
+			"path" = "CRTPlayer/PlayerView.swift";
+			"sourceTree" = "<group>";
+		};
+		"4B631F69842530D659306C8F" = {
+			"isa" = "PBXFileReference";
+			"lastKnownFileType" = "text.plist.xml";
+			"path" = "CRTPlayer/Info.plist";
+			"sourceTree" = "<group>";
+		};
+		"E52C854D5631EEC7468BA472" = {
+			"isa" = "PBXFileReference";
+			"lastKnownFileType" = "file";
+			"path" = "../../Resources/Demo.mp4";
+			"sourceTree" = "<group>";
+		};
+		"716F63B96E0C263222949A3B" = {
+			"isa" = "PBXFileReference";
+			"lastKnownFileType" = "folder.iconcomposer.icon";
+			"path" = "../../Resources/AppIcon.icon";
+			"sourceTree" = "<group>";
+		};
+		"93A9D4B62C49DF4936D5F701" = {
+			"isa" = "PBXFileReference";
+			"lastKnownFileType" = "folder";
+			"path" = "../../Tests/Fixtures";
+			"sourceTree" = "<group>";
+		};
+		"94D2B8E0EDAC37B3B2B5C4A2" = {
+			"isa" = "PBXFileReference";
+			"lastKnownFileType" = "sourcecode.swift";
+			"path" = "../../Tests/iOS/CRTPlayerTests/IOSPlaybackTests.swift";
+			"sourceTree" = "<group>";
+		};
+		"8D5093D2C263EEDEAE2010BE" = {
+			"isa" = "PBXFileReference";
+			"lastKnownFileType" = "sourcecode.swift";
+			"path" = "../../Tests/iOS/CRTPlayerUITests/PlayerUITests.swift";
+			"sourceTree" = "<group>";
+		};
+		"C2B6AF95E5FB6AF04547C8EA" = {
+			"isa" = "PBXFileReference";
+			"explicitFileType" = "wrapper.application";
+			"path" = "CRT Sim.app";
+			"sourceTree" = "BUILT_PRODUCTS_DIR";
+			"includeInIndex" = 0;
+		};
+		"D395CD88D9722089E4F2720D" = {
+			"isa" = "PBXFileReference";
+			"explicitFileType" = "wrapper.cfbundle";
+			"path" = "CRTPlayerTests.xctest";
+			"sourceTree" = "BUILT_PRODUCTS_DIR";
+			"includeInIndex" = 0;
+		};
+		"4E79B8023536267BD5E09920" = {
+			"isa" = "PBXFileReference";
+			"explicitFileType" = "wrapper.cfbundle";
+			"path" = "CRTPlayerUITests.xctest";
+			"sourceTree" = "BUILT_PRODUCTS_DIR";
+			"includeInIndex" = 0;
+		};
+		"FE0A091FDBFB3E9C31B7A1BD" = {
+			"isa" = "PBXGroup";
+			"children" = (
+				"C2B6AF95E5FB6AF04547C8EA",
+				"D395CD88D9722089E4F2720D",
+				"4E79B8023536267BD5E09920",
+			);
+			"name" = "Products";
+			"sourceTree" = "<group>";
+		};
+		"62BCE9422FF2D14F69AB80A1" = {
+			"isa" = "PBXGroup";
+			"children" = (
+				"9C9C442242136BDFDA736A6A",
+				"C3FA3924EBC8E7B9F48BD8D6",
+				"9E2E95153C4EF07B1FCB2C59",
+				"DAADF8066007A4EF31621F93",
+				"3D3F6DB6D2AA3DD6F0E06B9E",
+				"4B631F69842530D659306C8F",
+				"E52C854D5631EEC7468BA472",
+				"716F63B96E0C263222949A3B",
+				"93A9D4B62C49DF4936D5F701",
+				"94D2B8E0EDAC37B3B2B5C4A2",
+				"8D5093D2C263EEDEAE2010BE",
+				"FE0A091FDBFB3E9C31B7A1BD",
+			);
+			"sourceTree" = "<group>";
+		};
+		"9617888B244028D986C272F8" = {
+			"isa" = "XCSwiftPackageProductDependency";
+			"package" = "7E683BFFFFDE0CB09DD09E17";
+			"productName" = "CRTCore";
+		};
+		"092D3B52E6B8AC820210E41D" = {
+			"isa" = "XCSwiftPackageProductDependency";
+			"package" = "7E683BFFFFDE0CB09DD09E17";
+			"productName" = "CRTPreferences";
+		};
+		"3A77CD648711364E9A877D62" = {
+			"isa" = "XCBuildConfiguration";
+			"name" = "Debug";
+			"buildSettings" = {
+				"PRODUCT_NAME" = "CRT Sim";
+				"PRODUCT_MODULE_NAME" = "CRTSimiOS";
+				"PRODUCT_BUNDLE_IDENTIFIER" = "com.crtplayer.CRTSim.iOS";
+				"GENERATE_INFOPLIST_FILE" = "YES";
+				"INFOPLIST_FILE" = "CRTPlayer/Info.plist";
+				"ASSETCATALOG_COMPILER_APPICON_NAME" = "AppIcon";
+				"LD_RUNPATH_SEARCH_PATHS" = "$(inherited) @executable_path/Frameworks";
+				"SWIFT_OPTIMIZATION_LEVEL" = "-Onone";
+				"DEBUG_INFORMATION_FORMAT" = "dwarf";
+				"ONLY_ACTIVE_ARCH" = "YES";
+				"ENABLE_TESTABILITY" = "YES";
+				"SWIFT_ACTIVE_COMPILATION_CONDITIONS" = "DEBUG $(inherited)";
+			};
+		};
+		"066776A1C212750E8BE506A2" = {
+			"isa" = "XCBuildConfiguration";
+			"name" = "Release";
+			"buildSettings" = {
+				"PRODUCT_NAME" = "CRT Sim";
+				"PRODUCT_MODULE_NAME" = "CRTSimiOS";
+				"PRODUCT_BUNDLE_IDENTIFIER" = "com.crtplayer.CRTSim.iOS";
+				"GENERATE_INFOPLIST_FILE" = "YES";
+				"INFOPLIST_FILE" = "CRTPlayer/Info.plist";
+				"ASSETCATALOG_COMPILER_APPICON_NAME" = "AppIcon";
+				"LD_RUNPATH_SEARCH_PATHS" = "$(inherited) @executable_path/Frameworks";
+				"SWIFT_OPTIMIZATION_LEVEL" = "-O";
+				"DEBUG_INFORMATION_FORMAT" = "dwarf-with-dsym";
+			};
+		};
+		"B5E4F9F7C53A9A6AF99DBCE3" = {
+			"isa" = "XCConfigurationList";
+			"buildConfigurations" = (
+				"3A77CD648711364E9A877D62",
+				"066776A1C212750E8BE506A2",
+			);
+			"defaultConfigurationIsVisible" = 0;
+			"defaultConfigurationName" = "Release";
+		};
+		"C4DA3CA952E8818500BA4556" = {
+			"isa" = "PBXBuildFile";
+			"fileRef" = "9C9C442242136BDFDA736A6A";
+		};
+		"9922D66582ACB87A5D766D1D" = {
+			"isa" = "PBXBuildFile";
+			"fileRef" = "C3FA3924EBC8E7B9F48BD8D6";
+		};
+		"1E9D411A903330D589A30777" = {
+			"isa" = "PBXBuildFile";
+			"fileRef" = "9E2E95153C4EF07B1FCB2C59";
+		};
+		"73AC066CDB3B23D117601DD7" = {
+			"isa" = "PBXBuildFile";
+			"fileRef" = "DAADF8066007A4EF31621F93";
+		};
+		"5471CED5EAE0FCFD3EF49C29" = {
+			"isa" = "PBXBuildFile";
+			"fileRef" = "3D3F6DB6D2AA3DD6F0E06B9E";
+		};
+		"6805EC6AFDAFDBE18E2FF355" = {
+			"isa" = "PBXSourcesBuildPhase";
+			"buildActionMask" = 2147483647;
+			"files" = (
+				"C4DA3CA952E8818500BA4556",
+				"9922D66582ACB87A5D766D1D",
+				"1E9D411A903330D589A30777",
+				"73AC066CDB3B23D117601DD7",
+				"5471CED5EAE0FCFD3EF49C29",
+			);
+			"runOnlyForDeploymentPostprocessing" = 0;
+		};
+		"F714071FB24F37F0F4E9A9FF" = {
+			"isa" = "PBXBuildFile";
+			"productRef" = "9617888B244028D986C272F8";
+		};
+		"500EC847FC4DD508BBE9EFEA" = {
+			"isa" = "PBXBuildFile";
+			"productRef" = "092D3B52E6B8AC820210E41D";
+		};
+		"0F91A57B11B30F1A7980649D" = {
+			"isa" = "PBXFrameworksBuildPhase";
+			"buildActionMask" = 2147483647;
+			"files" = (
+				"F714071FB24F37F0F4E9A9FF",
+				"500EC847FC4DD508BBE9EFEA",
+			);
+			"runOnlyForDeploymentPostprocessing" = 0;
+		};
+		"6EC71A67F4EEF5E8BBE89770" = {
+			"isa" = "PBXBuildFile";
+			"fileRef" = "E52C854D5631EEC7468BA472";
+		};
+		"CD2B60FB9B57BBD63488DCFF" = {
+			"isa" = "PBXBuildFile";
+			"fileRef" = "716F63B96E0C263222949A3B";
+		};
+		"2AC7AB26953A78AD46B49603" = {
+			"isa" = "PBXResourcesBuildPhase";
+			"buildActionMask" = 2147483647;
+			"files" = (
+				"6EC71A67F4EEF5E8BBE89770",
+				"CD2B60FB9B57BBD63488DCFF",
+			);
+			"runOnlyForDeploymentPostprocessing" = 0;
+		};
+		"FC4A695F02A8A53A129DCB9A" = {
+			"isa" = "PBXNativeTarget";
+			"name" = "CRT Sim iOS";
+			"productName" = "CRT Sim";
+			"productReference" = "C2B6AF95E5FB6AF04547C8EA";
+			"productType" = "com.apple.product-type.application";
+			"buildConfigurationList" = "B5E4F9F7C53A9A6AF99DBCE3";
+			"buildPhases" = (
+				"6805EC6AFDAFDBE18E2FF355",
+				"0F91A57B11B30F1A7980649D",
+				"2AC7AB26953A78AD46B49603",
+			);
+			"buildRules" = (
+			);
+			"dependencies" = (
+			);
+			"packageProductDependencies" = (
+				"9617888B244028D986C272F8",
+				"092D3B52E6B8AC820210E41D",
+			);
+		};
+		"AB5A71E11BAB21353F3E3EE2" = {
+			"isa" = "PBXContainerItemProxy";
+			"containerPortal" = "F6F4DA8D93E88A08220E03B7";
+			"proxyType" = 1;
+			"remoteGlobalIDString" = "FC4A695F02A8A53A129DCB9A";
+			"remoteInfo" = "CRT Sim iOS";
+		};
+		"C8CB024463EA0557E3DD0A7D" = {
+			"isa" = "PBXTargetDependency";
+			"target" = "FC4A695F02A8A53A129DCB9A";
+			"targetProxy" = "AB5A71E11BAB21353F3E3EE2";
+		};
+		"5C41C5B16C1462EBE4CD57F9" = {
+			"isa" = "XCSwiftPackageProductDependency";
+			"package" = "7E683BFFFFDE0CB09DD09E17";
+			"productName" = "CRTCore";
+		};
+		"3AC31DD34F04D28DA5E800E6" = {
+			"isa" = "XCBuildConfiguration";
+			"name" = "Debug";
+			"buildSettings" = {
+				"PRODUCT_NAME" = "CRTPlayerTests";
+				"PRODUCT_BUNDLE_IDENTIFIER" = "com.crtplayer.CRTPlayerTests";
+				"GENERATE_INFOPLIST_FILE" = "YES";
+				"TEST_HOST" = "$(BUILT_PRODUCTS_DIR)/CRT Sim.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/CRT Sim";
+				"BUNDLE_LOADER" = "$(TEST_HOST)";
+				"SWIFT_OPTIMIZATION_LEVEL" = "-Onone";
+				"DEBUG_INFORMATION_FORMAT" = "dwarf";
+				"ONLY_ACTIVE_ARCH" = "YES";
+				"ENABLE_TESTABILITY" = "YES";
+				"SWIFT_ACTIVE_COMPILATION_CONDITIONS" = "DEBUG $(inherited)";
+			};
+		};
+		"76CF320D49F2B124F1575297" = {
+			"isa" = "XCBuildConfiguration";
+			"name" = "Release";
+			"buildSettings" = {
+				"PRODUCT_NAME" = "CRTPlayerTests";
+				"PRODUCT_BUNDLE_IDENTIFIER" = "com.crtplayer.CRTPlayerTests";
+				"GENERATE_INFOPLIST_FILE" = "YES";
+				"TEST_HOST" = "$(BUILT_PRODUCTS_DIR)/CRT Sim.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/CRT Sim";
+				"BUNDLE_LOADER" = "$(TEST_HOST)";
+				"SWIFT_OPTIMIZATION_LEVEL" = "-O";
+				"DEBUG_INFORMATION_FORMAT" = "dwarf-with-dsym";
+			};
+		};
+		"9E4EB193C4BCDC12CAF8F845" = {
+			"isa" = "XCConfigurationList";
+			"buildConfigurations" = (
+				"3AC31DD34F04D28DA5E800E6",
+				"76CF320D49F2B124F1575297",
+			);
+			"defaultConfigurationIsVisible" = 0;
+			"defaultConfigurationName" = "Release";
+		};
+		"DBF05138D5F70DACBEA99BF6" = {
+			"isa" = "PBXBuildFile";
+			"fileRef" = "94D2B8E0EDAC37B3B2B5C4A2";
+		};
+		"B741DF99339E6996365A3426" = {
+			"isa" = "PBXSourcesBuildPhase";
+			"buildActionMask" = 2147483647;
+			"files" = (
+				"DBF05138D5F70DACBEA99BF6",
+			);
+			"runOnlyForDeploymentPostprocessing" = 0;
+		};
+		"C1C10EBC999C8B36C6715956" = {
+			"isa" = "PBXBuildFile";
+			"productRef" = "5C41C5B16C1462EBE4CD57F9";
+		};
+		"BD2B476E85C7BA397A77A724" = {
+			"isa" = "PBXFrameworksBuildPhase";
+			"buildActionMask" = 2147483647;
+			"files" = (
+				"C1C10EBC999C8B36C6715956",
+			);
+			"runOnlyForDeploymentPostprocessing" = 0;
+		};
+		"5BC7B648ADEA7216C0970D4B" = {
+			"isa" = "PBXBuildFile";
+			"fileRef" = "93A9D4B62C49DF4936D5F701";
+		};
+		"02388731F4A42CC4E4BDFD69" = {
+			"isa" = "PBXResourcesBuildPhase";
+			"buildActionMask" = 2147483647;
+			"files" = (
+				"5BC7B648ADEA7216C0970D4B",
+			);
+			"runOnlyForDeploymentPostprocessing" = 0;
+		};
+		"D25F0D7E3402139B1394B59E" = {
+			"isa" = "PBXNativeTarget";
+			"name" = "CRTPlayerTests";
+			"productName" = "CRTPlayerTests";
+			"productReference" = "D395CD88D9722089E4F2720D";
+			"productType" = "com.apple.product-type.bundle.unit-test";
+			"buildConfigurationList" = "9E4EB193C4BCDC12CAF8F845";
+			"buildPhases" = (
+				"B741DF99339E6996365A3426",
+				"BD2B476E85C7BA397A77A724",
+				"02388731F4A42CC4E4BDFD69",
+			);
+			"buildRules" = (
+			);
+			"dependencies" = (
+				"C8CB024463EA0557E3DD0A7D",
+			);
+			"packageProductDependencies" = (
+				"5C41C5B16C1462EBE4CD57F9",
+			);
+		};
+		"A3E86A4F3F912C3FAD7EE5E4" = {
+			"isa" = "PBXContainerItemProxy";
+			"containerPortal" = "F6F4DA8D93E88A08220E03B7";
+			"proxyType" = 1;
+			"remoteGlobalIDString" = "FC4A695F02A8A53A129DCB9A";
+			"remoteInfo" = "CRT Sim iOS";
+		};
+		"8F3AE2B55755E032323AA997" = {
+			"isa" = "PBXTargetDependency";
+			"target" = "FC4A695F02A8A53A129DCB9A";
+			"targetProxy" = "A3E86A4F3F912C3FAD7EE5E4";
+		};
+		"6A8AEC91F7CE7309947FB0D4" = {
+			"isa" = "XCBuildConfiguration";
+			"name" = "Debug";
+			"buildSettings" = {
+				"PRODUCT_NAME" = "CRTPlayerUITests";
+				"PRODUCT_BUNDLE_IDENTIFIER" = "com.crtplayer.CRTPlayerUITests";
+				"GENERATE_INFOPLIST_FILE" = "YES";
+				"TEST_TARGET_NAME" = "CRT Sim iOS";
+				"SWIFT_OPTIMIZATION_LEVEL" = "-Onone";
+				"DEBUG_INFORMATION_FORMAT" = "dwarf";
+				"ONLY_ACTIVE_ARCH" = "YES";
+				"ENABLE_TESTABILITY" = "YES";
+				"SWIFT_ACTIVE_COMPILATION_CONDITIONS" = "DEBUG $(inherited)";
+			};
+		};
+		"B1DF1EC131463DC09929D883" = {
+			"isa" = "XCBuildConfiguration";
+			"name" = "Release";
+			"buildSettings" = {
+				"PRODUCT_NAME" = "CRTPlayerUITests";
+				"PRODUCT_BUNDLE_IDENTIFIER" = "com.crtplayer.CRTPlayerUITests";
+				"GENERATE_INFOPLIST_FILE" = "YES";
+				"TEST_TARGET_NAME" = "CRT Sim iOS";
+				"SWIFT_OPTIMIZATION_LEVEL" = "-O";
+				"DEBUG_INFORMATION_FORMAT" = "dwarf-with-dsym";
+			};
+		};
+		"7BFBCFCE38454DA2A821A571" = {
+			"isa" = "XCConfigurationList";
+			"buildConfigurations" = (
+				"6A8AEC91F7CE7309947FB0D4",
+				"B1DF1EC131463DC09929D883",
+			);
+			"defaultConfigurationIsVisible" = 0;
+			"defaultConfigurationName" = "Release";
+		};
+		"6C90589DCF16DF0854B476F5" = {
+			"isa" = "PBXBuildFile";
+			"fileRef" = "8D5093D2C263EEDEAE2010BE";
+		};
+		"E02541914A530B9AA4379E06" = {
+			"isa" = "PBXSourcesBuildPhase";
+			"buildActionMask" = 2147483647;
+			"files" = (
+				"6C90589DCF16DF0854B476F5",
+			);
+			"runOnlyForDeploymentPostprocessing" = 0;
+		};
+		"23AF52955C7E6FD5DB5533E9" = {
+			"isa" = "PBXFrameworksBuildPhase";
+			"buildActionMask" = 2147483647;
+			"files" = (
+			);
+			"runOnlyForDeploymentPostprocessing" = 0;
+		};
+		"FE55A4C8EC868F24401A137B" = {
+			"isa" = "PBXResourcesBuildPhase";
+			"buildActionMask" = 2147483647;
+			"files" = (
+			);
+			"runOnlyForDeploymentPostprocessing" = 0;
+		};
+		"7D958189D3C7AF897556AF7F" = {
+			"isa" = "PBXNativeTarget";
+			"name" = "CRTPlayerUITests";
+			"productName" = "CRTPlayerUITests";
+			"productReference" = "4E79B8023536267BD5E09920";
+			"productType" = "com.apple.product-type.bundle.ui-testing";
+			"buildConfigurationList" = "7BFBCFCE38454DA2A821A571";
+			"buildPhases" = (
+				"E02541914A530B9AA4379E06",
+				"23AF52955C7E6FD5DB5533E9",
+				"FE55A4C8EC868F24401A137B",
+			);
+			"buildRules" = (
+			);
+			"dependencies" = (
+				"8F3AE2B55755E032323AA997",
+			);
+			"packageProductDependencies" = (
+			);
+		};
+		"BFD315016DE16320F7E2120C" = {
+			"isa" = "XCBuildConfiguration";
+			"name" = "Debug";
+			"buildSettings" = {
+				"SDKROOT" = "iphoneos";
+				"IPHONEOS_DEPLOYMENT_TARGET" = "26.0";
+				"SWIFT_VERSION" = "6.0";
+				"TARGETED_DEVICE_FAMILY" = "1,2";
+				"SUPPORTED_PLATFORMS" = "iphoneos iphonesimulator";
+				"CLANG_ENABLE_MODULES" = "YES";
+				"CODE_SIGN_STYLE" = "Automatic";
+				"ENABLE_USER_SCRIPT_SANDBOXING" = "YES";
+				"SWIFT_OPTIMIZATION_LEVEL" = "-Onone";
+				"DEBUG_INFORMATION_FORMAT" = "dwarf";
+				"ONLY_ACTIVE_ARCH" = "YES";
+				"ENABLE_TESTABILITY" = "YES";
+				"SWIFT_ACTIVE_COMPILATION_CONDITIONS" = "DEBUG $(inherited)";
+			};
+		};
+		"1D8C0C6B1D22EA8C7669B263" = {
+			"isa" = "XCBuildConfiguration";
+			"name" = "Release";
+			"buildSettings" = {
+				"SDKROOT" = "iphoneos";
+				"IPHONEOS_DEPLOYMENT_TARGET" = "26.0";
+				"SWIFT_VERSION" = "6.0";
+				"TARGETED_DEVICE_FAMILY" = "1,2";
+				"SUPPORTED_PLATFORMS" = "iphoneos iphonesimulator";
+				"CLANG_ENABLE_MODULES" = "YES";
+				"CODE_SIGN_STYLE" = "Automatic";
+				"ENABLE_USER_SCRIPT_SANDBOXING" = "YES";
+				"SWIFT_OPTIMIZATION_LEVEL" = "-O";
+				"DEBUG_INFORMATION_FORMAT" = "dwarf-with-dsym";
+			};
+		};
+		"5D7731714D3E69D68AA8D7ED" = {
+			"isa" = "XCConfigurationList";
+			"buildConfigurations" = (
+				"BFD315016DE16320F7E2120C",
+				"1D8C0C6B1D22EA8C7669B263",
+			);
+			"defaultConfigurationIsVisible" = 0;
+			"defaultConfigurationName" = "Release";
+		};
+		"F6F4DA8D93E88A08220E03B7" = {
+			"isa" = "PBXProject";
+			"attributes" = {
+				"BuildIndependentTargetsInParallel" = "YES";
+				"LastUpgradeCheck" = "2700";
+				"TargetAttributes" = {
+					"FC4A695F02A8A53A129DCB9A" = {
+						"CreatedOnToolsVersion" = "26.0";
+					};
+					"D25F0D7E3402139B1394B59E" = {
+						"TestTargetID" = "FC4A695F02A8A53A129DCB9A";
+					};
+					"7D958189D3C7AF897556AF7F" = {
+						"TestTargetID" = "FC4A695F02A8A53A129DCB9A";
+					};
+				};
+			};
+			"buildConfigurationList" = "5D7731714D3E69D68AA8D7ED";
+			"compatibilityVersion" = "Xcode 15.0";
+			"developmentRegion" = "en";
+			"hasScannedForEncodings" = 0;
+			"knownRegions" = (
+				"en",
+				"Base",
+			);
+			"mainGroup" = "62BCE9422FF2D14F69AB80A1";
+			"productRefGroup" = "FE0A091FDBFB3E9C31B7A1BD";
+			"projectDirPath" = "";
+			"projectRoot" = "";
+			"targets" = (
+				"FC4A695F02A8A53A129DCB9A",
+				"D25F0D7E3402139B1394B59E",
+				"7D958189D3C7AF897556AF7F",
+			);
+			"packageReferences" = (
+				"7E683BFFFFDE0CB09DD09E17",
+			);
+		};
+	};
+	"rootObject" = "F6F4DA8D93E88A08220E03B7";
+}

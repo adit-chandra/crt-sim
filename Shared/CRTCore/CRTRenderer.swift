@@ -283,14 +283,20 @@ public final class CRTRenderer: NSObject, MTKViewDelegate {
         let desc = MTLTextureDescriptor.texture2DDescriptor(
             pixelFormat: outputFormat, width: width, height: height, mipmapped: false)
         desc.usage = [.renderTarget, .shaderRead]
+        #if os(macOS)
         desc.storageMode = device.hasUnifiedMemory ? .shared : .managed
+        #else
+        desc.storageMode = .shared
+        #endif
         guard let target = device.makeTexture(descriptor: desc),
               let commandBuffer = commandQueue.makeCommandBuffer() else { return nil }
         encode(into: commandBuffer, target: target, contentsScale: contentsScale, time: time)
+        #if os(macOS)
         if target.storageMode == .managed, let blit = commandBuffer.makeBlitCommandEncoder() {
             blit.synchronize(resource: target)
             blit.endEncoding()
         }
+        #endif
         commandBuffer.commit()
         commandBuffer.waitUntilCompleted()
 

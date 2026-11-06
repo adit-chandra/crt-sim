@@ -3,46 +3,50 @@ import Foundation
 import Observation
 
 /// App-wide CRT settings, shared by every player window and persisted across launches.
+@MainActor
 @Observable
-final class CRTSettingsStore {
+public final class CRTSettingsStore {
     /// A preset switch or on/off toggle that windows announce, like a TV
     /// changing channels. `id` makes repeats of the same text distinct.
-    struct Announcement: Equatable, Sendable {
-        let id: Int
-        let text: String
+    public struct Announcement: Equatable, Sendable {
+        public let id: Int
+        public let text: String
     }
 
-    static let shared = CRTSettingsStore()
+    public static let shared = CRTSettingsStore()
 
-    var settings: CRTSettings {
+    public var settings: CRTSettings {
         didSet { save() }
     }
-    var isEnabled: Bool {
+    public var isEnabled: Bool {
         didSet {
             UserDefaults.standard.set(isEnabled, forKey: Keys.enabled)
             announce(isEnabled ? (preset?.name ?? "CRT On") : "CRT Off")
         }
     }
-    private(set) var announcement: Announcement?
+    public private(set) var announcement: Announcement?
+    #if os(macOS)
     /// Show the picture as light on a translucent glass window instead of a black one.
-    var glassPane: Bool {
+    public var glassPane: Bool {
         didSet { UserDefaults.standard.set(glassPane, forKey: Keys.glassPane) }
     }
     /// How see-through the picture is in glass-pane mode, 0...1.
-    var glassTransparency: Double {
+    public var glassTransparency: Double {
         didSet { UserDefaults.standard.set(glassTransparency, forKey: Keys.glassTransparency) }
     }
     /// How light the glass is in glass-pane mode: 0 dark smoked, 1 bright frosted.
-    var glassBrightness: Double {
+    public var glassBrightness: Double {
         didSet { UserDefaults.standard.set(glassBrightness, forKey: Keys.glassBrightness) }
     }
     /// Keep player windows above other apps' windows.
-    var floatsOnTop: Bool {
+    public var floatsOnTop: Bool {
         didSet { UserDefaults.standard.set(floatsOnTop, forKey: Keys.floatsOnTop) }
     }
 
+    #endif
+
     /// The preset matching the current settings exactly, if any.
-    var preset: CRTPreset? {
+    public var preset: CRTPreset? {
         CRTPreset.all.first { $0.settings == settings }
     }
 
@@ -60,13 +64,15 @@ final class CRTSettingsStore {
         settings = defaults.data(forKey: Keys.settings)
             .flatMap { try? JSONDecoder().decode(CRTSettings.self, from: $0) } ?? .default
         isEnabled = defaults.object(forKey: Keys.enabled) as? Bool ?? true
+        #if os(macOS)
         glassPane = defaults.bool(forKey: Keys.glassPane)
         glassTransparency = defaults.object(forKey: Keys.glassTransparency) as? Double ?? 0.4
         glassBrightness = defaults.object(forKey: Keys.glassBrightness) as? Double ?? 0.45
         floatsOnTop = defaults.bool(forKey: Keys.floatsOnTop)
+        #endif
     }
 
-    func apply(_ preset: CRTPreset) {
+    public func apply(_ preset: CRTPreset) {
         settings = preset.settings
         if isEnabled {
             announce(preset.name)
@@ -77,7 +83,7 @@ final class CRTSettingsStore {
 
     /// Steps through presets in order; from custom settings, starts at the first.
     @discardableResult
-    func cyclePreset(by offset: Int) -> CRTPreset {
+    public func cyclePreset(by offset: Int) -> CRTPreset {
         let all = CRTPreset.all
         let index = preset.flatMap { current in all.firstIndex { $0.id == current.id } }
         let next = index.map { (($0 + offset) % all.count + all.count) % all.count } ?? 0

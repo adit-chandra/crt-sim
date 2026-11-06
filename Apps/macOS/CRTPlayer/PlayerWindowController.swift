@@ -1,3 +1,4 @@
+import CRTPreferences
 import AppKit
 import CRTCore
 import MediaPlayback

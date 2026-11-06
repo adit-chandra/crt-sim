@@ -2,7 +2,14 @@
 build/
 .swiftpm/
 *.xcodeproj/
+!Apps/iOS/CRTPlayer.xcodeproj/
+xcuserdata/
+*.xcuserstate
+*.xcresult/
 DerivedData/
 .DS_Store
 .worktrees/
 __pycache__/
+
+# Personal signing identity and paired device installer
+/scripts/install-iphone.py

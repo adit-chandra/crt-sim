@@ -6,6 +6,7 @@ import io
 import os
 from pathlib import Path
 import subprocess
+import sys
 import tempfile
 import threading
 import unittest
@@ -13,6 +14,7 @@ from unittest.mock import patch
 
 
 ROOT = Path(__file__).resolve().parents[2]
+sys.path.insert(0, str(ROOT / "scripts"))
 spec = importlib.util.spec_from_file_location("build_app", ROOT / "scripts/build-app.py")
 build_app = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(build_app)

@@ -20,3 +20,16 @@ snapshot:
 
 clean:
 	rm -rf .build build
+
+# The existing commands above continue to target macOS.
+.PHONY: macos ios ios-open ios-test
+macos: app
+
+ios:
+	@python3 scripts/build-ios.py build
+
+ios-open:
+	open Apps/iOS/CRTPlayer.xcodeproj
+
+ios-test:
+	@python3 scripts/build-ios.py test
