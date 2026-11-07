@@ -15,6 +15,8 @@ final class ChromeState {
     }
     /// Transient on-screen-display text, like a TV's channel banner.
     var osdMessage: String?
+    /// The current file's place among the playable files in its folder, once listed.
+    var folder: MediaFolder?
 }
 
 /// QuickTime-style floating transport controls.
@@ -25,6 +27,7 @@ struct ControlBar: View {
     var onDrag: (CGSize?) -> Void = { _ in }
     let showSubtitleMenu: (NSView) -> Void
     let showAudioMenu: (NSView) -> Void
+    let playFile: (URL) -> Void
 
     var body: some View {
         VStack(spacing: 4) {
@@ -36,14 +39,13 @@ struct ControlBar: View {
                         .frame(minWidth: 0, maxWidth: 72)
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
-                HStack(spacing: 20) {
-                    BarButton(symbol: "gobackward.10", size: 16) { model.skip(by: -10) }
-                    BarButton(symbol: model.isPlaying ? "pause.fill" : "play.fill", size: 24) {
-                        model.togglePlayPause()
-                    }
-                    .frame(width: 34)
-                    BarButton(symbol: "goforward.10", size: 16) { model.skip(by: 10) }
+                // A narrow bar drops the ten-second skips to make room for the folder
+                // buttons; the arrow keys still skip.
+                ViewThatFits(in: .horizontal) {
+                    transport(showsSkips: true)
+                    transport(showsSkips: false)
                 }
+                .layoutPriority(1)
                 HStack(spacing: 4) {
                     TrackMenuButton(symbol: "waveform", title: "Audio Track", isEnabled: !model.audioTracks.isEmpty,
                                     showMenu: showAudioMenu)
@@ -80,6 +82,34 @@ struct ControlBar: View {
         } message: {
             Text(model.playbackError ?? "")
         }
+    }
+
+    private func transport(showsSkips: Bool) -> some View {
+        HStack(spacing: 20) {
+            if let folder = chrome.folder {
+                folderButton(symbol: "backward.end.fill", direction: "Previous", file: folder.previous)
+            }
+            if showsSkips {
+                BarButton(symbol: "gobackward.10", size: 16) { model.skip(by: -10) }
+            }
+            BarButton(symbol: model.isPlaying ? "pause.fill" : "play.fill", size: 24) {
+                model.togglePlayPause()
+            }
+            .frame(width: 34)
+            if showsSkips {
+                BarButton(symbol: "goforward.10", size: 16) { model.skip(by: 10) }
+            }
+            if let folder = chrome.folder {
+                folderButton(symbol: "forward.end.fill", direction: "Next", file: folder.next)
+            }
+        }
+    }
+
+    private func folderButton(symbol: String, direction: String, file: URL?) -> some View {
+        BarButton(symbol: symbol, size: 14) { if let file { playFile(file) } }
+            .disabled(file == nil)
+            .help(file.map { "\(direction): \($0.lastPathComponent)" } ?? "\(direction) in Folder")
+            .accessibilityLabel("\(direction) in Folder")
     }
 
     private var volume: Binding<Double> {
@@ -142,6 +172,7 @@ struct BarButton: View {
     var size: CGFloat = 15
     var isActive = false
     let action: () -> Void
+    @Environment(\.isEnabled) private var isEnabled
     @State private var isHovering = false
 
     var body: some View {
@@ -153,7 +184,7 @@ struct BarButton: View {
                 .contentShape(.rect)
         }
         .buttonStyle(.plain)
-        .foregroundStyle(.white.opacity(isHovering || isActive ? 1 : 0.82))
+        .foregroundStyle(.white.opacity(!isEnabled ? 0.3 : isHovering || isActive ? 1 : 0.82))
         .onHover { isHovering = $0 }
     }
 }
@@ -218,5 +249,42 @@ struct OSDView: View {
             .opacity(chrome.osdMessage == nil ? 0 : 1)
             .animation(.easeOut(duration: 0.2), value: chrome.osdMessage)
             .fixedSize()
+    }
+}
+
+/// Offered at the side of the last frame when a video ends and its folder has another file.
+struct UpNextCard: View {
+    let file: URL
+    let play: () -> Void
+    let dismiss: () -> Void
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            HStack {
+                Text("UP NEXT")
+                    .font(.system(size: 10, weight: .semibold))
+                    .foregroundStyle(.white.opacity(0.6))
+                Spacer(minLength: 8)
+                BarButton(symbol: "xmark", size: 10, action: dismiss)
+                    .help("Dismiss")
+                    .accessibilityLabel("Dismiss")
+            }
+            Text(file.deletingPathExtension().lastPathComponent)
+                .font(.system(size: 14, weight: .semibold))
+                .foregroundStyle(.white)
+                .lineLimit(3)
+                .truncationMode(.middle)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .help(file.lastPathComponent)
+            Button("Play", systemImage: "play.fill", action: play)
+                .buttonStyle(.glassProminent)
+                .frame(maxWidth: .infinity, alignment: .trailing)
+                .padding(.top, 2)
+        }
+        .padding(.horizontal, 14)
+        .padding(.vertical, 10)
+        .frame(width: 250)
+        .glassEffect(.regular, in: .rect(cornerRadius: 18))
+        .environment(\.colorScheme, .dark)
     }
 }

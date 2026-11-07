@@ -28,6 +28,7 @@ final class PlayerWindowController: NSWindowController, NSWindowDelegate, NSMenu
     private var controlsBottom: NSLayoutConstraint!
     private var controlsDragOrigin: NSPoint?
     private let osdHost: PassiveHostingView<OSDView>
+    private let upNextHost = NSHostingView<UpNextCard?>(rootView: nil)
 
     private var chromeVisible = true
     private var pointerInside = false
@@ -142,8 +143,10 @@ final class PlayerWindowController: NSWindowController, NSWindowDelegate, NSMenu
 
         controlsHost.sizingOptions = [.minSize, .intrinsicContentSize]
         osdHost.sizingOptions = [.intrinsicContentSize]
+        upNextHost.sizingOptions = [.intrinsicContentSize]
+        upNextHost.isHidden = true
 
-        for view in [metalView, titleShade, osdHost, controlsHost] as [NSView] {
+        for view in [metalView, titleShade, osdHost, upNextHost, controlsHost] as [NSView] {
             view.translatesAutoresizingMaskIntoConstraints = false
             contentView.addSubview(view)
         }
@@ -156,6 +159,10 @@ final class PlayerWindowController: NSWindowController, NSWindowDelegate, NSMenu
         controlsBottom = controlsHost.bottomAnchor.constraint(equalTo: contentView.bottomAnchor, constant: -20)
         controlsCenterX.priority = .defaultLow
         controlsBottom.priority = .defaultLow
+        // Up Next sits at the right just above the control bar, giving way rather
+        // than displacing a bar the user dragged elsewhere.
+        let upNextAboveControls = upNextHost.bottomAnchor.constraint(equalTo: controlsHost.topAnchor, constant: -12)
+        upNextAboveControls.priority = NSLayoutConstraint.Priority(NSLayoutConstraint.Priority.defaultLow.rawValue - 10)
         NSLayoutConstraint.activate([
             metalView.leadingAnchor.constraint(equalTo: contentView.leadingAnchor),
             metalView.trailingAnchor.constraint(equalTo: contentView.trailingAnchor),
@@ -178,6 +185,12 @@ final class PlayerWindowController: NSWindowController, NSWindowDelegate, NSMenu
             controlsHost.bottomAnchor.constraint(lessThanOrEqualTo: contentView.bottomAnchor, constant: -16),
             controlsHost.widthAnchor.constraint(lessThanOrEqualTo: contentView.widthAnchor, constant: -32),
             preferredWidth,
+
+            upNextHost.trailingAnchor.constraint(equalTo: contentView.trailingAnchor, constant: -20),
+            upNextHost.leadingAnchor.constraint(greaterThanOrEqualTo: contentView.leadingAnchor, constant: 16),
+            upNextHost.topAnchor.constraint(greaterThanOrEqualTo: contentView.topAnchor, constant: 36),
+            upNextHost.bottomAnchor.constraint(lessThanOrEqualTo: contentView.bottomAnchor, constant: -20),
+            upNextAboveControls,
         ])
     }
 
@@ -199,14 +212,18 @@ final class PlayerWindowController: NSWindowController, NSWindowDelegate, NSMenu
         metalView.delegate = renderer
     }
 
-    /// Starts showing `model`; an empty screen changes channel to it.
+    /// Starts showing `model`; an empty screen or a file from the folder changes channel to it.
     private func play(_ model: PlayerModel) {
+        modelTasks.forEach { $0.cancel() }
         self.model = model
+        chrome.folder = nil
+        showUpNext(nil)
         contentView.acceptsSubtitles = true
         controlsHost.rootView = ControlBar(model: model, chrome: chrome, store: store,
                                           onDrag: { [weak self] in self?.dragControls(by: $0) },
                                           showSubtitleMenu: { [weak self] in self?.showSubtitleMenu(from: $0) },
-                                          showAudioMenu: { [weak self] in self?.showAudioMenu(from: $0) })
+                                          showAudioMenu: { [weak self] in self?.showAudioMenu(from: $0) },
+                                          playFile: { [weak self] in self?.changeChannel(to: $0) })
         modelTasks = [
             Task { [weak self] in
                 for await loaded in Observations({ model.isLoaded }) where loaded {
@@ -227,6 +244,17 @@ final class PlayerWindowController: NSWindowController, NSWindowDelegate, NSMenu
                 for await size in Observations({ model.videoSize }) {
                     if let size { self?.fitWindow(to: size, animate: self?.pendingShow != true) }
                 }
+            },
+            Task { [weak self] in
+                for await _ in Observations({ model.reachedEnd }) {
+                    self?.updateUpNext()
+                }
+            },
+            Task { [weak self] in
+                let folder = await MediaFolder.containing(model.url)
+                guard let self, !Task.isCancelled else { return }
+                chrome.folder = folder
+                updateUpNext()
             },
         ]
     }
@@ -265,6 +293,59 @@ final class PlayerWindowController: NSWindowController, NSWindowDelegate, NSMenu
                 }
             },
         ]
+    }
+
+    // MARK: - Folder
+
+    /// Changes channel to another file from the folder in this window. The
+    /// window moves to the new file's document so its title and Open Recent follow.
+    private func changeChannel(to url: URL) {
+        guard let current = model, url != current.url, !isPoweringOff else { return }
+        if let oldDocument = document as? NSDocument {
+            let documents = NSDocumentController.shared
+            if let open = documents.document(for: url) {
+                open.showWindows()
+                return
+            }
+            do {
+                let newDocument = try documents.makeDocument(withContentsOf: url,
+                                                             ofType: documents.typeForContents(of: url))
+                documents.addDocument(newDocument)
+                oldDocument.removeWindowController(self)
+                newDocument.addWindowController(self)
+                oldDocument.close()
+                documents.noteNewRecentDocument(newDocument)
+            } catch {
+                NSApp.presentError(error)
+                return
+            }
+        }
+        let next = PlayerModel(url: url)
+        next.isMuted = current.isMuted
+        next.loops = current.loops
+        current.invalidate()
+        play(next)
+    }
+
+    /// Offers the folder's next file while the video on screen sits at its end.
+    private func updateUpNext() {
+        showUpNext(model?.reachedEnd == true ? chrome.folder?.next : nil)
+    }
+
+    private func showUpNext(_ file: URL?) {
+        guard file != upNextHost.rootView?.file else { return }
+        upNextHost.rootView = file.map { file in
+            UpNextCard(file: file,
+                       play: { [weak self] in self?.changeChannel(to: file) },
+                       dismiss: { [weak self] in self?.showUpNext(nil) })
+        }
+        upNextHost.isHidden = file == nil
+        guard file != nil else { return }
+        upNextHost.alphaValue = 0
+        NSAnimationContext.runAnimationGroup { context in
+            context.duration = 0.3
+            upNextHost.animator().alphaValue = 1
+        }
     }
 
     // MARK: - Glass pane
@@ -516,6 +597,8 @@ final class PlayerWindowController: NSWindowController, NSWindowDelegate, NSMenu
         case 126: adjustVolume(by: 0.1)                         // ↑
         case 125: adjustVolume(by: -0.1)                        // ↓
         case 53 where isFullScreen: window?.toggleFullScreen(nil) // esc
+        case 36 where upNextHost.rootView != nil:               // return
+            upNextHost.rootView?.play()
         default: return false
         }
         flashChrome()
@@ -543,6 +626,32 @@ final class PlayerWindowController: NSWindowController, NSWindowDelegate, NSMenu
     @objc func skipForward(_ sender: Any?) {
         model?.skip(by: Self.skipInterval)
         flashChrome()
+    }
+
+    @objc func playPreviousInFolder(_ sender: Any?) {
+        if let file = chrome.folder?.previous { changeChannel(to: file) }
+    }
+
+    @objc func playNextInFolder(_ sender: Any?) {
+        if let file = chrome.folder?.next { changeChannel(to: file) }
+    }
+
+    @objc func playFolderFile(_ sender: NSMenuItem) {
+        if let file = sender.representedObject as? URL { changeChannel(to: file) }
+    }
+
+    func populateFolderMenu(_ menu: NSMenu) {
+        menu.removeAllItems()
+        guard let folder = chrome.folder else {
+            menu.addItem(NSMenuItem(title: "No Other Files", action: nil, keyEquivalent: ""))
+            return
+        }
+        for (index, file) in folder.files.enumerated() {
+            let item = NSMenuItem(title: file.lastPathComponent, action: #selector(playFolderFile(_:)), keyEquivalent: "")
+            item.representedObject = file
+            item.state = index == folder.index ? .on : .off
+            menu.addItem(item)
+        }
     }
 
     @objc func toggleLoop(_ sender: Any?) {
@@ -681,6 +790,10 @@ final class PlayerWindowController: NSWindowController, NSWindowDelegate, NSMenu
             return model != nil
         case #selector(selectAudio(_:)):
             return model?.audioTracks.isEmpty == false
+        case #selector(playPreviousInFolder(_:)):
+            return chrome.folder?.previous != nil
+        case #selector(playNextInFolder(_:)):
+            return chrome.folder?.next != nil
         case #selector(toggleLoop(_:)):
             item.state = model?.loops == true ? .on : .off
             return model != nil
@@ -717,6 +830,7 @@ final class PlayerWindowController: NSWindowController, NSWindowDelegate, NSMenu
         chrome.showsSettings = false
         chrome.showsSubtitleSettings = false
         setChromeVisible(false)
+        showUpNext(nil)
         renderer.play(.powerOff) { [weak self] in self?.finishClosing() }
         // The animation only advances while the view draws; don't let a hidden
         // window wait on it forever.

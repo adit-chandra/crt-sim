@@ -34,6 +34,7 @@ struct WindowLayoutTests {
             ?? root.subviews.compactMap { $0 as? PlayerContentView }.first)
         let metal = try #require(content.subviews.compactMap { $0 as? CRTMetalView }.first)
         let controls = try #require(content.subviews.compactMap { $0 as? NSHostingView<ControlBar?> }.first)
+        #expect(controls.rootView?.chrome.folder != nil, "The fixtures' folder buttons widen the bar under test")
 
         for anchoredAtRight in [false, true] {
             for width: CGFloat in [960, 640, 532, 500, 450, 400, 360, 640, 960] {

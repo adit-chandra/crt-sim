@@ -35,6 +35,8 @@
 
 - Plays MKV, MP4, MOV, and any other video or audio format libmpv supports,
   with hardware decoding where available.
+- Steps through the other videos in the same folder, and offers the next one
+  when a video ends.
 - Switches between embedded audio tracks without restarting playback.
 - Shows embedded or external subtitles (SRT, ASS/SSA, WebVTT, bitmap), drawn
   into the picture *before* the CRT effect, so they look like part of the
@@ -144,6 +146,7 @@ inactive, and the screen stays awake while playing.
 | CRT renderer and presets | Shared Metal pipeline | Same pipeline and presets |
 | HDR/EDR display output | Supported | SDR output in this version |
 | Audio selection | Embedded tracks, including Off | Tracks exposed by AVFoundation; mute available |
+| Folder playback | Previous/next and Up Next for files beside the open one | Not available; Files grants access to the chosen file only |
 | Subtitles | Embedded/external text, ASS and bitmap, inside the CRT effect | Embedded text exposed by AVFoundation, overlaid after the CRT effect; off by default |
 | Desktop window features | Glass Pane, Float on Top, multiple documents | Native full-screen player and settings sheet |
 
@@ -162,6 +165,21 @@ open plays in it. Open a file by any of these:
 - **File → Open…** (⌘O)
 - Dropping it on the window or the Dock icon
 - Finder's **Open With** menu
+
+### Playing a folder
+
+When the open file shares its folder with other videos or audio files, CRT Sim
+can play them in the same window, in Finder's name order.
+
+- The **previous** and **next** buttons in the control bar, or **View →
+  Previous in Folder** / **Next in Folder** (⌘← / ⌘→), step through the
+  folder. In a narrow window they take the place of the ten-second skip
+  buttons; ← and → still skip.
+- **View → Play from Folder** lists every playable file in the folder.
+- When a video ends, an **Up Next** panel at the lower right offers the next
+  file. Click **Play** or press Return; × dismisses it. Nothing plays on its own.
+- Only video and audio files are listed, and hidden files are skipped. Mute
+  and Loop carry over to the next file.
 
 ### CRT settings
 
@@ -209,6 +227,8 @@ can't be recolored.
 | --- | --- |
 | Space | Play / pause |
 | ← / → | Skip 10 seconds |
+| ⌘← / ⌘→ | Previous / next file in the folder |
+| Return | Play the Up Next file when a video ends |
 | ↑ / ↓ | Volume |
 | ⌘O | Open file |
 | ⌥⌘O | Load subtitle file |

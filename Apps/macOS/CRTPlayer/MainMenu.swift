@@ -2,8 +2,9 @@ import AppKit
 import CRTCore
 
 enum MainMenu {
-    private static let subtitleDelegate = SubtitleMenuDelegate()
-    private static let audioDelegate = AudioMenuDelegate()
+    private static let subtitleDelegate = PlayerMenuDelegate { $0.populateSubtitleMenu($1) }
+    private static let audioDelegate = PlayerMenuDelegate { $0.populateAudioMenu($1) }
+    private static let folderDelegate = PlayerMenuDelegate { $0.populateFolderMenu($1) }
     static func make() -> NSMenu {
         let appName = Bundle.main.object(forInfoDictionaryKey: "CFBundleName") as? String ?? "CRT Sim"
         let main = NSMenu()
@@ -36,6 +37,14 @@ enum MainMenu {
                           key(NSLeftArrowFunctionKey), []))
         view.addItem(item("Skip Forward 10 Seconds", #selector(PlayerWindowController.skipForward(_:)),
                           key(NSRightArrowFunctionKey), []))
+        view.addItem(item("Previous in Folder", #selector(PlayerWindowController.playPreviousInFolder(_:)),
+                          key(NSLeftArrowFunctionKey)))
+        view.addItem(item("Next in Folder", #selector(PlayerWindowController.playNextInFolder(_:)),
+                          key(NSRightArrowFunctionKey)))
+        let folder = NSMenu(title: "Play from Folder")
+        folder.delegate = folderDelegate
+        folder.addItem(item("No Media Open", nil))
+        view.addItem(item("Play from Folder", submenu: folder))
         view.addItem(item("Loop", #selector(PlayerWindowController.toggleLoop(_:)), "l", [.command, .option]))
         let audio = NSMenu(title: "Audio Track")
         audio.delegate = audioDelegate
@@ -99,21 +108,17 @@ enum MainMenu {
     }
 }
 
-private final class AudioMenuDelegate: NSObject, NSMenuDelegate {
-    func menuNeedsUpdate(_ menu: NSMenu) {
-        if let controller = NSApp.mainWindow?.windowController as? PlayerWindowController {
-            controller.populateAudioMenu(menu)
-        } else {
-            menu.removeAllItems()
-            menu.addItem(NSMenuItem(title: "No Media Open", action: nil, keyEquivalent: ""))
-        }
-    }
-}
+/// Fills a menu from the frontmost player window.
+private final class PlayerMenuDelegate: NSObject, NSMenuDelegate {
+    private let populate: (PlayerWindowController, NSMenu) -> Void
 
-private final class SubtitleMenuDelegate: NSObject, NSMenuDelegate {
+    init(populate: @escaping (PlayerWindowController, NSMenu) -> Void) {
+        self.populate = populate
+    }
+
     func menuNeedsUpdate(_ menu: NSMenu) {
         if let controller = NSApp.mainWindow?.windowController as? PlayerWindowController {
-            controller.populateSubtitleMenu(menu)
+            populate(controller, menu)
         } else {
             menu.removeAllItems()
             menu.addItem(NSMenuItem(title: "No Media Open", action: nil, keyEquivalent: ""))

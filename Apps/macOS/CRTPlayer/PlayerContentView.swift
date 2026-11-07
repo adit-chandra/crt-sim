@@ -3,9 +3,13 @@ import MetalKit
 import SwiftUI
 import UniformTypeIdentifiers
 
-enum MediaFileTypes {
+nonisolated enum MediaFileTypes {
     static let subtitleExtensions = ["srt", "ass", "ssa", "vtt", "sub", "idx", "sup", "lrc"]
     static func isSubtitle(_ url: URL) -> Bool { subtitleExtensions.contains(url.pathExtension.lowercased()) }
+    static func isMedia(_ url: URL) -> Bool {
+        ["mkv", "mka"].contains(url.pathExtension.lowercased())
+            || UTType(filenameExtension: url.pathExtension)?.conforms(to: .audiovisualContent) == true
+    }
 }
 
 /// Root view of a player window: hosts the Metal view and overlays, tracks the
@@ -73,10 +77,7 @@ final class PlayerContentView: NSView {
             .urlReadingFileURLsOnly: true,
         ]
         let urls = info.draggingPasteboard.readObjects(forClasses: [NSURL.self], options: options) as? [URL] ?? []
-        return urls.filter {
-            (acceptsSubtitles && MediaFileTypes.isSubtitle($0)) || ["mkv", "mka"].contains($0.pathExtension.lowercased())
-                || UTType(filenameExtension: $0.pathExtension)?.conforms(to: .audiovisualContent) == true
-        }
+        return urls.filter { (acceptsSubtitles && MediaFileTypes.isSubtitle($0)) || MediaFileTypes.isMedia($0) }
     }
 }
 

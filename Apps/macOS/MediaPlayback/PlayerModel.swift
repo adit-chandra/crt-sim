@@ -17,12 +17,15 @@ public struct AudioTrack: Identifiable, Equatable, Sendable {
 /// One playback clock owns demuxing, decoding, seeking, and subtitle composition.
 @Observable
 public final class PlayerModel {
+    public let url: URL
     public private(set) var isPlaying = false
     public private(set) var duration: Double = 0
     public private(set) var currentTime: Double = 0
     public private(set) var videoSize: CGSize?
     public private(set) var loadError: Error?
     public private(set) var isLoaded = false
+    /// Playback stopped at the end of the file; seeking back clears it.
+    public private(set) var reachedEnd = false
     public private(set) var subtitleTracks: [SubtitleTrack] = []
     public private(set) var selectedSubtitleID: Int64?
     public private(set) var audioTracks: [AudioTrack] = []
@@ -44,7 +47,6 @@ public final class PlayerModel {
     @ObservationIgnored private var frame: CVPixelBuffer?
     @ObservationIgnored private var hasNewFrame = false
     @ObservationIgnored private var paused = true
-    @ObservationIgnored private var reachedEnd = false
     @ObservationIgnored private var isScrubbing = false
     @ObservationIgnored private var resumeAfterScrub = false
     @ObservationIgnored private var hasVideo = false
@@ -53,6 +55,7 @@ public final class PlayerModel {
     @ObservationIgnored private var rotation = 0.0
 
     public init(url: URL, subtitleSettings: SubtitleSettingsStore = .shared) {
+        self.url = url
         volume = UserDefaults.standard.object(forKey: "volume") as? Float ?? 1
         do {
             guard let handle = mpv_create() else { throw PlaybackError("Could not create the media player.") }
