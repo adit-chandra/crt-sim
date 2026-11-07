@@ -149,7 +149,9 @@ final class PlayerWindowController: NSWindowController, NSWindowDelegate, NSMenu
         }
 
         let preferredWidth = controlsHost.widthAnchor.constraint(equalToConstant: 500)
-        preferredWidth.priority = .defaultHigh
+        // Yield to window resizing, but preserve the bar's width before its position.
+        // A priority above windowSizeStayPut makes this a 532-point window minimum.
+        preferredWidth.priority = NSLayoutConstraint.Priority(NSLayoutConstraint.Priority.windowSizeStayPut.rawValue - 1)
         controlsCenterX = controlsHost.centerXAnchor.constraint(equalTo: contentView.centerXAnchor)
         controlsBottom = controlsHost.bottomAnchor.constraint(equalTo: contentView.bottomAnchor, constant: -20)
         controlsCenterX.priority = .defaultLow
